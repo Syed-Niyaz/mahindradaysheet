@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Production builds
+frontend/dist/
+dist/
+
+# Local database, WAL files and backups (protect customer receipts and financial data)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
+data/backups/
+*.db
+*.db-wal
+*.db-shm
+
+# Process ID tracking
+data/*.pid
+*.pid
+
+# Excel files containing real business and customer data
+*.xlsx
+*.xls
+
+# Environment variables & local configuration
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Editor & OS files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
