@@ -1,4 +1,4 @@
-﻿const Database = require('better-sqlite3');
+const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 const XLSX = require('xlsx');
@@ -9,6 +9,21 @@ if (!fs.existsSync(dataDir)) {
 }
 
 const dbPath = path.join(dataDir, 'daysheet.db');
+const dbExists = fs.existsSync(dbPath);
+const backupsDir = path.join(dataDir, 'backups');
+
+if (!dbExists && fs.existsSync(backupsDir)) {
+    const backupFiles = fs.readdirSync(backupsDir)
+        .filter(f => f.startsWith('daysheet_backup_') && f.endsWith('.db'))
+        .sort()
+        .reverse();
+    if (backupFiles.length > 0) {
+        console.warn(`[DB ALERT] Active database not found at ${dbPath}! Found ${backupFiles.length} backup(s).`);
+        console.log(`[DB RECOVERY] Restoring from latest backup: ${backupFiles[0]}`);
+        fs.copyFileSync(path.join(backupsDir, backupFiles[0]), dbPath);
+    }
+}
+
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
@@ -131,10 +146,12 @@ function initSchema() {
         console.log('Seeded default branches.');
     }
 
-    // On first run: seed from backup file if receipts table is empty
+    // On first run: seed from backup file if receipts table is empty and never seeded before
+    const initialSeedDone = getSetting('initial_seed_completed');
     const receiptCount = db.prepare('SELECT COUNT(*) as count FROM receipts').get().count;
-    if (receiptCount === 0) {
+    if (receiptCount === 0 && !initialSeedDone) {
         seedInitialBackupFile();
+        setSetting('initial_seed_completed', '1');
     }
 }
 

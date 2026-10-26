@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const dotenv = require('dotenv');
 const { startWatcher } = require('./services/syncService');
+const { startBackupSchedule } = require('./services/backupService');
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use('/api/receipts', require('./routes/receipts'));
 app.use('/api/daysheet', require('./routes/daysheet'));
 app.use('/api/branches', require('./routes/branches'));
 app.use('/api/audit-logs', require('./routes/audit'));
+app.use('/api/backup', require('./routes/backup'));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -43,6 +45,7 @@ app.listen(PORT, () => {
     console.log(` API: http://localhost:${PORT}/api/daysheet`);
     console.log(`=======================================================`);
 
-    // Start file watcher AFTER server is up
+    // Start file watcher and automated backup schedule AFTER server is up
     startWatcher();
+    startBackupSchedule(6);
 });
