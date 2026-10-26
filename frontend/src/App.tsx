@@ -85,6 +85,8 @@ interface SyncHistoryEntry {
   sync_type: string;
   total_rows: number;
   inserted: number;
+  updated?: number;
+  deleted?: number;
   skipped_duplicates: number;
   failed: number;
   started_at: string;
@@ -98,7 +100,7 @@ interface ReceiptSyncRow {
   amount?: number;
   mode?: string;
   date?: string;
-  status: 'IMPORTED' | 'DUPLICATE' | 'FAILED';
+  status: 'IMPORTED' | 'DUPLICATE' | 'FAILED' | 'DELETED' | 'UPDATED';
   reason?: string;
 }
 
@@ -144,7 +146,7 @@ export default function App() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null);
   const [syncLoading, setSyncLoading] = useState(false);
-  const [syncResult, setSyncResult] = useState<{ receipts: ReceiptSyncRow[]; inserted: number; skippedDuplicates: number; failed: number; totalRows: number } | null>(null);
+  const [syncResult, setSyncResult] = useState<{ receipts: ReceiptSyncRow[]; inserted: number; updated?: number; deleted?: number; skippedDuplicates: number; failed: number; totalRows: number } | null>(null);
   const [syncError, setSyncError] = useState<string>('');
 
   // File Path Settings State
@@ -320,9 +322,12 @@ export default function App() {
       const data = await res.json();
       if (data.success) {
         setSyncResult(data.result);
-        showNotification(`Sync complete â€” ${data.result.inserted} new receipts imported.`, 'success');
+        const delMsg = data.result.deleted ? `, ${data.result.deleted} deleted` : '';
+        const updMsg = data.result.updated ? `, ${data.result.updated} updated` : '';
+        showNotification(`Sync complete — ${data.result.inserted} new${delMsg}${updMsg}.`, 'success');
         fetchSyncStatus();
         fetchDaySheet();
+        fetchReceipts();
       } else {
         setSyncError(data.error || 'Sync failed');
         showNotification(data.error || 'Sync failed', 'error');
@@ -356,13 +361,17 @@ export default function App() {
         setSyncResult({
           receipts: data.receipts || [],
           inserted: data.inserted,
+          updated: data.updated || 0,
+          deleted: data.deleted || 0,
           skippedDuplicates: data.skippedDuplicates,
           failed: data.errorsCount,
           totalRows: data.totalRows
         });
-        showNotification(`Upload sync done â€” ${data.inserted} new, ${data.skippedDuplicates} duplicates skipped.`, 'success');
+        const delMsg = data.deleted ? `, ${data.deleted} deleted` : '';
+        showNotification(`Upload done — ${data.inserted} new${delMsg}, ${data.skippedDuplicates} duplicates skipped.`, 'success');
         fetchSyncStatus();
         fetchDaySheet();
+        fetchReceipts();
       } else {
         setSyncError(data.error || 'Upload failed');
         showNotification(data.error || 'Upload failed', 'error');
@@ -1841,16 +1850,18 @@ export default function App() {
             {syncResult && (
               <div style={{ backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0', overflow: 'hidden', marginBottom: '20px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
                 {/* Summary row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', borderBottom: '1px solid #e2e8f0' }}>
                   {[
                     { label: 'TOTAL ROWS', val: syncResult.totalRows, bg: '#f8fafc', col: '#0f172a' },
                     { label: 'NEW IMPORTED', val: syncResult.inserted, bg: '#ecfdf5', col: '#059669' },
-                    { label: 'DUPLICATES SKIPPED', val: syncResult.skippedDuplicates, bg: '#fffbeb', col: '#d97706' },
-                    { label: 'FAILED', val: syncResult.failed, bg: syncResult.failed > 0 ? '#fef2f2' : '#f8fafc', col: syncResult.failed > 0 ? '#dc2626' : '#0f172a' },
+                    { label: 'DELETED FROM EXCEL', val: syncResult.deleted || 0, bg: (syncResult.deleted || 0) > 0 ? '#fef2f2' : '#f8fafc', col: (syncResult.deleted || 0) > 0 ? '#dc2626' : '#64748b' },
+                    { label: 'UPDATED', val: syncResult.updated || 0, bg: (syncResult.updated || 0) > 0 ? '#eff6ff' : '#f8fafc', col: (syncResult.updated || 0) > 0 ? '#2563eb' : '#64748b' },
+                    { label: 'DUPLICATES', val: syncResult.skippedDuplicates, bg: '#fffbeb', col: '#d97706' },
+                    { label: 'FAILED', val: syncResult.failed, bg: syncResult.failed > 0 ? '#fef2f2' : '#f8fafc', col: syncResult.failed > 0 ? '#dc2626' : '#64748b' },
                   ].map(s => (
                     <div key={s.label} style={{ padding: '14px 16px', textAlign: 'center', backgroundColor: s.bg }}>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{s.label}</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: s.col }}>{s.val}</div>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{s.label}</div>
+                      <div style={{ fontSize: '1.4rem', fontWeight: 900, color: s.col }}>{s.val}</div>
                     </div>
                   ))}
                 </div>
@@ -1871,26 +1882,28 @@ export default function App() {
                       </thead>
                       <tbody>
                         {syncResult.receipts.map((r, i) => (
-                          <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                          <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: r.status === 'DELETED' ? '#fff5f5' : (i % 2 === 0 ? '#fff' : '#f8fafc') }}>
                             <td style={{ padding: '7px 12px' }}>
                               <span style={{
                                 padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700,
-                                backgroundColor: r.status === 'IMPORTED' ? '#ecfdf5' : r.status === 'DUPLICATE' ? '#fffbeb' : '#fef2f2',
-                                color: r.status === 'IMPORTED' ? '#059669' : r.status === 'DUPLICATE' ? '#d97706' : '#dc2626'
+                                backgroundColor: r.status === 'IMPORTED' ? '#ecfdf5' : r.status === 'DELETED' ? '#fee2e2' : r.status === 'UPDATED' ? '#dbeafe' : r.status === 'DUPLICATE' ? '#fffbeb' : '#fef2f2',
+                                color: r.status === 'IMPORTED' ? '#059669' : r.status === 'DELETED' ? '#dc2626' : r.status === 'UPDATED' ? '#1d4ed8' : r.status === 'DUPLICATE' ? '#d97706' : '#dc2626'
                               }}>{r.status}</span>
                             </td>
-                            <td style={{ padding: '7px 12px', fontFamily: 'monospace', fontWeight: 600, color: '#0f172a' }}>{r.receiptNo}</td>
-                            <td style={{ padding: '7px 12px', color: '#334155', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.customer || r.reason || 'â€”'}</td>
-                            <td style={{ padding: '7px 12px', color: '#475569' }}>{r.date || 'â€”'}</td>
+                            <td style={{ padding: '7px 12px', fontFamily: 'monospace', fontWeight: 600, color: r.status === 'DELETED' ? '#dc2626' : '#0f172a', textDecoration: r.status === 'DELETED' ? 'line-through' : 'none' }}>
+                              {r.receiptNo}
+                            </td>
+                            <td style={{ padding: '7px 12px', color: '#334155', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.customer || r.reason || '—'}</td>
+                            <td style={{ padding: '7px 12px', color: '#475569' }}>{r.date || '—'}</td>
                             <td style={{ padding: '7px 12px', textAlign: 'right', fontWeight: 700 }}>
-                              {r.amount ? `â‚¹${r.amount.toLocaleString('en-IN')}` : 'â€”'}
+                              {r.amount ? `₹${r.amount.toLocaleString('en-IN')}` : '—'}
                             </td>
                             <td style={{ padding: '7px 12px' }}>
                               <span style={{
                                 padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600,
                                 backgroundColor: r.mode?.toLowerCase() === 'cash' ? '#ecfdf5' : '#f0f9ff',
                                 color: r.mode?.toLowerCase() === 'cash' ? '#065f46' : '#0369a1'
-                              }}>{r.mode || 'â€”'}</span>
+                              }}>{r.mode || '—'}</span>
                             </td>
                           </tr>
                         ))}
@@ -1901,7 +1914,7 @@ export default function App() {
               </div>
             )}
 
-            {/* â”€â”€ Sync History â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* ── Sync History ───────────────────────────────────────────── */}
             {syncStatus?.history && syncStatus.history.length > 0 && (
               <div style={{ backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1915,6 +1928,7 @@ export default function App() {
                       <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>Time</th>
                       <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>Total</th>
                       <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#059669' }}>+New</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>-Deleted</th>
                       <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#d97706' }}>Dups</th>
                       <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#dc2626' }}>Fail</th>
                     </tr>
@@ -1932,6 +1946,7 @@ export default function App() {
                         <td style={{ padding: '8px 12px', color: '#64748b', fontSize: '0.79rem' }}>{new Date(h.started_at).toLocaleString()}</td>
                         <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>{h.total_rows}</td>
                         <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700, color: '#059669' }}>+{h.inserted}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', color: (h.deleted || 0) > 0 ? '#dc2626' : '#94a3b8', fontWeight: (h.deleted || 0) > 0 ? 700 : 400 }}>{h.deleted || 0}</td>
                         <td style={{ padding: '8px 12px', textAlign: 'right', color: '#d97706' }}>{h.skipped_duplicates}</td>
                         <td style={{ padding: '8px 12px', textAlign: 'right', color: h.failed > 0 ? '#dc2626' : '#94a3b8' }}>{h.failed}</td>
                       </tr>

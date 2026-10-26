@@ -133,6 +133,14 @@ function initSchema() {
         db.exec(`ALTER TABLE receipts ADD COLUMN source TEXT DEFAULT 'MANUAL'`);
     } catch (e) { /* column already exists — ignore */ }
 
+    // Migration: add deleted and updated columns to import_log (safe on existing DB)
+    try {
+        db.exec(`ALTER TABLE import_log ADD COLUMN deleted INTEGER DEFAULT 0`);
+    } catch (e) { /* already exists */ }
+    try {
+        db.exec(`ALTER TABLE import_log ADD COLUMN updated INTEGER DEFAULT 0`);
+    } catch (e) { /* already exists */ }
+
     // Seed default branches if empty
     const branchCount = db.prepare('SELECT COUNT(*) as count FROM branches').get().count;
     if (branchCount === 0) {

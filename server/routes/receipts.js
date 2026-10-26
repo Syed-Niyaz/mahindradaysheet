@@ -366,12 +366,14 @@ router.post('/import-excel', upload.single('file'), (req, res) => {
         if (!ws) return res.status(400).json({ success: false, error: 'No valid sheet found' });
 
         const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-        let inserted = 0, skippedDuplicates = 0;
+        let inserted = 0, skippedDuplicates = 0, deleted = 0, updated = 0;
         const errors = [];
         const receipts = [];
+        const uploadedReceiptNos = new Set();
 
         const checkDup = db.prepare(`
-            SELECT id FROM receipts WHERE branch_id = ? AND receipt_no = ? AND receipt_type = ?
+            SELECT id, amount, payment_mode, customer_name, receipt_date FROM receipts
+            WHERE branch_id = ? AND receipt_no = ? AND receipt_type = ?
         `);
         const insertS = db.prepare(`
             INSERT INTO receipts
@@ -380,6 +382,14 @@ router.post('/import-excel', upload.single('file'), (req, res) => {
                  received_towards, utr_reference, narration, source)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'EXCEL_UPLOAD')
         `);
+        const updateS = db.prepare(`
+            UPDATE receipts
+            SET amount = ?, payment_mode = ?, customer_name = ?, vehicle_no = ?,
+                received_towards = ?, utr_reference = ?, narration = ?, receipt_date = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `);
+        const deleteR = db.prepare(`DELETE FROM receipts WHERE id = ?`);
 
         db.transaction(() => {
             for (let i = 0; i < rows.length; i++) {
@@ -387,11 +397,7 @@ router.post('/import-excel', upload.single('file'), (req, res) => {
                 const receiptNo = (r['SERVICE Receipt No.'] || r['Receipt No'] || r['RCP NO'] || '').toString().trim();
                 if (!receiptNo) continue;
 
-                if (checkDup.get(branchId, receiptNo, 'SERVICE')) {
-                    skippedDuplicates++;
-                    receipts.push({ receiptNo, status: 'DUPLICATE' });
-                    continue;
-                }
+                uploadedReceiptNos.add(receiptNo.toUpperCase());
 
                 const dateRaw = r['Date'] || r['receipt_date'];
                 const receiptDate = parseDateStr(dateRaw) || new Date().toISOString().split('T')[0];
@@ -405,6 +411,26 @@ router.post('/import-excel', upload.single('file'), (req, res) => {
                 const mv = custRaw.match(/([A-Z]{2}\s?\d{1,2}\s?[A-Z]{0,3}\s?\d{4})/i);
                 if (mv) vehicle = mv[0].replace(/\s+/g, '');
 
+                const existing = checkDup.get(branchId, receiptNo, 'SERVICE');
+                if (existing) {
+                    const isChanged = (
+                        Math.abs(existing.amount - amount) > 0.001 ||
+                        (existing.payment_mode || '').toLowerCase() !== mode.toLowerCase() ||
+                        existing.customer_name !== (custRaw || 'Customer') ||
+                        existing.receipt_date !== receiptDate
+                    );
+
+                    if (isChanged) {
+                        updateS.run(amount, mode, custRaw || 'Customer', vehicle, towards, utr, narr, receiptDate, existing.id);
+                        updated++;
+                        receipts.push({ receiptNo, customer: custRaw, amount, mode, date: receiptDate, status: 'UPDATED' });
+                    } else {
+                        skippedDuplicates++;
+                        receipts.push({ receiptNo, status: 'DUPLICATE' });
+                    }
+                    continue;
+                }
+
                 try {
                     insertS.run(branchId, receiptNo, receiptDate, 'SERVICE',
                         custRaw || 'Customer', vehicle, amount, mode, towards, utr, narr);
@@ -415,25 +441,60 @@ router.post('/import-excel', upload.single('file'), (req, res) => {
                     receipts.push({ receiptNo, status: 'FAILED', reason: e.message });
                 }
             }
+
+            // Mirror Deletions: Delete receipts removed from uploaded Excel sheet
+            if (uploadedReceiptNos.size > 0) {
+                const dbSynced = db.prepare(`
+                    SELECT id, receipt_no, customer_name, amount, payment_mode, receipt_date
+                    FROM receipts
+                    WHERE source IN ('EXCEL_SYNC', 'EXCEL_UPLOAD')
+                      AND receipt_type = 'SERVICE'
+                      AND branch_id = ?
+                `).all(branchId);
+
+                for (const dbR of dbSynced) {
+                    const normR = (dbR.receipt_no || '').trim().toUpperCase();
+                    if (!uploadedReceiptNos.has(normR)) {
+                        deleteR.run(dbR.id);
+                        deleted++;
+                        receipts.push({
+                            receiptNo: dbR.receipt_no,
+                            customer: dbR.customer_name,
+                            amount: dbR.amount,
+                            mode: dbR.payment_mode,
+                            date: dbR.receipt_date,
+                            status: 'DELETED',
+                            reason: 'Row was removed from uploaded Excel sheet',
+                        });
+
+                        try {
+                            db.prepare(`
+                                INSERT INTO audit_logs (entity_type, entity_id, action, details, user_name)
+                                VALUES ('RECEIPT', ?, 'EXCEL_SYNC_DELETE', ?, 'Accounts Staff (Upload)')
+                            `).run(dbR.id, `Receipt ${dbR.receipt_no} (₹${dbR.amount}) automatically deleted: row was removed from uploaded Excel sheet`);
+                        } catch (e) {}
+                    }
+                }
+            }
         })();
 
         // Write to import_log
         db.prepare(`
             INSERT INTO import_log
-                (source_file, sync_type, total_rows, inserted, skipped_duplicates, failed,
+                (source_file, sync_type, total_rows, inserted, skipped_duplicates, failed, deleted, updated,
                  receipt_details, completed_at)
-            VALUES (?, 'MANUAL_UPLOAD', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (?, 'MANUAL_UPLOAD', ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `).run(req.file.originalname, rows.length, inserted, skippedDuplicates,
-               errors.length, JSON.stringify(receipts));
+               errors.length, deleted, updated, JSON.stringify(receipts));
 
         db.prepare(`
             INSERT INTO audit_logs (entity_type, action, details, user_name)
             VALUES ('EXCEL_SYNC', 'MANUAL_UPLOAD', ?, 'Accounts Staff')
-        `).run(JSON.stringify({ file: req.file.originalname, inserted, skippedDuplicates }));
+        `).run(JSON.stringify({ file: req.file.originalname, inserted, updated, deleted, skippedDuplicates }));
 
         res.json({
             success: true,
-            totalRows: rows.length, inserted, skippedDuplicates,
+            totalRows: rows.length, inserted, updated, deleted, skippedDuplicates,
             errorsCount: errors.length, errors: errors.slice(0, 5),
             receipts: receipts.slice(0, 100)
         });
