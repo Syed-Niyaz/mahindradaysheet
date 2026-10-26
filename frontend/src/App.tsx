@@ -1893,7 +1893,12 @@ export default function App() {
                             <td style={{ padding: '7px 12px', fontFamily: 'monospace', fontWeight: 600, color: r.status === 'DELETED' ? '#dc2626' : '#0f172a', textDecoration: r.status === 'DELETED' ? 'line-through' : 'none' }}>
                               {r.receiptNo}
                             </td>
-                            <td style={{ padding: '7px 12px', color: '#334155', maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.customer || r.reason || '—'}</td>
+                            <td style={{ padding: '7px 12px', color: '#334155', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <div>{r.customer || '—'}</div>
+                              {r.status === 'FAILED' && r.reason && (
+                                <div style={{ color: '#dc2626', fontSize: '0.72rem', whiteSpace: 'normal', marginTop: '2px' }}>{r.reason}</div>
+                              )}
+                            </td>
                             <td style={{ padding: '7px 12px', color: '#475569' }}>{r.date || '—'}</td>
                             <td style={{ padding: '7px 12px', textAlign: 'right', fontWeight: 700 }}>
                               {r.amount ? `₹${r.amount.toLocaleString('en-IN')}` : '—'}

@@ -49,24 +49,54 @@ function resolveBranchId(branchName) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Helper to get cell value checking preferred key, fallbacks, and trimmed keys
+// ─────────────────────────────────────────────────────────────────────────────
+function getCell(r, ...possibleKeys) {
+    for (const key of possibleKeys) {
+        if (!key) continue;
+        if (r[key] !== undefined && r[key] !== null && String(r[key]).trim() !== '') {
+            return String(r[key]).trim();
+        }
+    }
+    const rowKeys = Object.keys(r);
+    for (const key of possibleKeys) {
+        if (!key) continue;
+        const target = key.trim().toLowerCase();
+        for (const k of rowKeys) {
+            if (k.trim().toLowerCase() === target) {
+                const val = r[k];
+                if (val !== undefined && val !== null && String(val).trim() !== '') {
+                    return String(val).trim();
+                }
+            }
+        }
+    }
+    return '';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Parse a single row from the backup sheet into a clean receipt object.
 // Returns null if the row should be skipped.
 // ─────────────────────────────────────────────────────────────────────────────
 function parseRow(r) {
     const col = config.COLUMN_MAP;
 
-    const receiptNo = (r[col.receiptNo] || '').toString().trim();
+    const receiptNo = getCell(r, col.receiptNo, 'SERVICE Receipt No.', 'Receipt No', 'Receipt No.', 'RCP NO');
     if (!receiptNo) return null;                  // Skip blank rows
 
-    const dateStr   = parseDateStr(r[col.date])  || new Date().toISOString().split('T')[0];
-    const customer  = (r[col.customerName]  || '').toString().trim() || 'Unknown Customer';
-    const amtRaw    = (r[col.amount] || r['Amount'] || 0).toString().replace(/,/g, '').trim();
+    const dateRaw   = getCell(r, col.date, 'Date', 'receipt_date', 'Receipt Date');
+    const dateStr   = parseDateStr(dateRaw) || new Date().toISOString().split('T')[0];
+
+    const customer  = getCell(r, col.customerName, 'Customer Name', 'Customer') || 'Unknown Customer';
+
+    const amtRaw    = getCell(r, col.amount, ' Amount ', 'Amount', 'Total').replace(/,/g, '');
     const amount    = parseFloat(amtRaw) || 0;
-    const mode      = (r[col.paymentMode]  || 'Cash').toString().trim();
-    const towards   = (r[col.receivedTowards] || '').toString().trim();
-    const utr       = (r[col.utrReference] || '').toString().trim();
-    const narration = (r[col.narration]    || '').toString().trim();
-    const branchName= (r[col.branch]       || '').toString().trim();
+
+    const mode      = getCell(r, col.paymentMode, ' Column 6 ', 'Column 6', 'Payment Mode', 'Mode') || 'Cash';
+    const towards   = getCell(r, col.receivedTowards, ' Column 4 ', 'Column 4', 'Received Towards');
+    const utr       = getCell(r, col.utrReference, 'Column 8', ' Column 8 ', 'UTR /NEFT No.', 'UTR / NEFT No.');
+    const narration = getCell(r, col.narration, 'Narration');
+    const branchName= getCell(r, col.branch, 'Branch', 'Branch Name');
 
     // Extract vehicle number from customer name if embedded
     let vehicleNo = '';
@@ -177,7 +207,15 @@ function syncFromFile(syncType = 'MANUAL_SYNC', filePath = null) {
             if (!branchId) {
                 result.failed++;
                 result.errors.push(`Row ${i + 2}: Cannot resolve branch "${parsed.branchName}"`);
-                result.receipts.push({ receiptNo: parsed.receiptNo, status: 'FAILED', reason: 'Unknown branch' });
+                result.receipts.push({
+                    receiptNo: parsed.receiptNo,
+                    customer: parsed.customer,
+                    amount: parsed.amount,
+                    mode: parsed.mode,
+                    date: parsed.dateStr,
+                    status: 'FAILED',
+                    reason: 'Unknown branch'
+                });
                 continue;
             }
 
@@ -235,8 +273,7 @@ function syncFromFile(syncType = 'MANUAL_SYNC', filePath = null) {
                         parsed.mode,
                         parsed.towards,
                         parsed.utr,
-                        parsed.narration,
-                        'EXCEL_SYNC'
+                        parsed.narration
                     );
                     result.inserted++;
                     result.receipts.push({
@@ -253,6 +290,10 @@ function syncFromFile(syncType = 'MANUAL_SYNC', filePath = null) {
                 result.errors.push(`Row ${i + 2} (${parsed.receiptNo}): ${e.message}`);
                 result.receipts.push({
                     receiptNo: parsed.receiptNo,
+                    customer: parsed.customer,
+                    amount: parsed.amount,
+                    mode: parsed.mode,
+                    date: parsed.dateStr,
                     status: 'FAILED',
                     reason: e.message,
                 });
