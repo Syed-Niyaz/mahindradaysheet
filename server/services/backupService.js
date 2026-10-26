@@ -7,12 +7,28 @@ if (!fs.existsSync(backupDir)) {
     fs.mkdirSync(backupDir, { recursive: true });
 }
 
-const MAX_BACKUPS = 30;
+const MAX_BACKUPS = 10;
+
+function getTodayPrefix() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `daysheet_backup_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_`;
+}
+
+function hasBackupForToday() {
+    try {
+        if (!fs.existsSync(backupDir)) return false;
+        const prefix = getTodayPrefix();
+        return fs.readdirSync(backupDir).some(f => f.startsWith(prefix) && f.endsWith('.db'));
+    } catch (e) {
+        return false;
+    }
+}
 
 /**
  * Creates a safe, point-in-time SQLite online backup.
  * WAL-consistent, non-blocking, safe even while reading/writing.
- * @param {string} reason - 'scheduled', 'manual', 'startup', 'pre_migration', 'pre_restore'
+ * @param {string} reason - 'daily', 'manual', 'manual_ui', 'pre_restore'
  * @returns {Promise<{success: boolean, backupFile?: string, error?: string, fullPath?: string, size?: number}>}
  */
 async function createBackup(reason = 'manual') {
@@ -132,19 +148,27 @@ function verifyBackup(backupFileName) {
 }
 
 let backupScheduleTimer = null;
-function startBackupSchedule(intervalHours = 6) {
+function startBackupSchedule() {
     if (backupScheduleTimer) clearInterval(backupScheduleTimer);
-    // Run an initial backup 5 seconds after startup
+
+    // Initial check on startup: only create a backup if none has been taken today yet
     setTimeout(() => {
-        createBackup('startup');
+        if (!hasBackupForToday()) {
+            console.log('[Backup] No backup found for today. Creating daily auto backup...');
+            createBackup('daily');
+        } else {
+            console.log('[Backup] Daily backup already exists for today. Skipping duplicate startup backup.');
+        }
     }, 5000);
 
-    // Schedule regular backups
-    const intervalMs = intervalHours * 60 * 60 * 1000;
+    // Check once every hour; if date changed and no backup exists for today, create one
     backupScheduleTimer = setInterval(() => {
-        createBackup('scheduled');
-    }, intervalMs);
-    console.log(`[Backup] Automated backup schedule active (every ${intervalHours} hours)`);
+        if (!hasBackupForToday()) {
+            console.log('[Backup] Daily schedule: Creating daily backup for new day...');
+            createBackup('daily');
+        }
+    }, 60 * 60 * 1000);
+    console.log('[Backup] Automated backup schedule active: 1 per day (retention: 10)');
 }
 
 module.exports = {
@@ -152,6 +176,7 @@ module.exports = {
     listBackups,
     verifyBackup,
     cleanOldBackups,
+    hasBackupForToday,
     startBackupSchedule,
     backupDir
 };

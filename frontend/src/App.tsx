@@ -2025,7 +2025,7 @@ export default function App() {
                 <div>
                   <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Auto-Backup Schedule</div>
                   <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#059669' }}>
-                    Every 6 hours + at startup (retention: 30)
+                    Once per day (retention: 10)
                   </div>
                 </div>
               </div>
