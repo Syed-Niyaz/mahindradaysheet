@@ -656,35 +656,45 @@ export default function App() {
       )}
 
       {/* HEADER BAR (NO-PRINT) */}
-      <header className="no-print" style={{
-        backgroundColor: '#0f172a',
-        color: '#ffffff',
-        borderBottom: '3px solid #d32f2f',
-        padding: '12px 24px'
+      <header className="no-print glass-header" style={{
+        padding: '16px 28px',
+        position: 'relative'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '18px' }}>
           
           {/* Logo & Dealership Details */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{
-              backgroundColor: '#d32f2f',
+              background: 'linear-gradient(135deg, #e11d48 0%, #be123c 60%, #881337 100%)',
               color: '#ffffff',
-              padding: '8px 12px',
-              borderRadius: '6px',
+              padding: '10px 16px',
+              borderRadius: '8px',
               fontWeight: 800,
-              fontSize: '1.2rem',
-              letterSpacing: '1px'
+              fontSize: '1.25rem',
+              letterSpacing: '1.5px',
+              boxShadow: '0 4px 16px rgba(225, 29, 72, 0.45)',
+              border: '1px solid rgba(255, 255, 255, 0.2)'
             }}>
               MAHINDRA
             </div>
             <div>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, letterSpacing: '0.5px' }}>
-                BELLARY MOTORS SALES PVT. LTD.
-              </h1>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8', display: 'flex', gap: '16px', marginTop: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ fontSize: '1.35rem', fontWeight: 800, margin: 0, letterSpacing: '0.5px', color: '#ffffff' }}>
+                  BELLARY MOTORS
+                </h1>
+                <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 500 }}>
+                  Sales Pvt. Ltd.
+                </span>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#cbd5e1', display: 'flex', gap: '14px', marginTop: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span className="live-dot" />
+                  <strong style={{ color: '#10b981' }}>System Online</strong> (Multi-PC LAN :5173)
+                </span>
+                <span>•</span>
                 <span><strong>H.O:</strong> BALLARI</span>
+                <span>•</span>
                 <span><strong>GSTIN:</strong> 29AACCB6242J1ZK</span>
-                <span><strong>System:</strong> Day Sheet & Service Receipt Automation</span>
               </div>
             </div>
           </div>
@@ -692,16 +702,21 @@ export default function App() {
           {/* Quick Context Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             {/* Branch Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#1e293b', padding: '6px 12px', borderRadius: '6px', border: '1px solid #334155' }}>
-              <Building2 size={16} color="#ef4444" />
-              <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Branch:</label>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              backgroundColor: 'rgba(30, 41, 59, 0.75)', padding: '7px 14px',
+              borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.12)',
+              backdropFilter: 'blur(8px)'
+            }}>
+              <Building2 size={16} color="#f43f5e" />
+              <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Branch:</label>
               <select 
                 value={selectedBranchId}
                 onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-                style={{ background: 'transparent', color: '#ffffff', border: 'none', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+                style={{ background: 'transparent', color: '#ffffff', border: 'none', fontWeight: 700, outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
               >
                 {branches.map(b => (
-                  <option key={b.id} value={b.id} style={{ background: '#1e293b', color: '#fff' }}>
+                  <option key={b.id} value={b.id} style={{ background: '#0f172a', color: '#fff' }}>
                     {b.name} {b.is_head_office ? '(H.O)' : ''}
                   </option>
                 ))}
@@ -709,30 +724,39 @@ export default function App() {
             </div>
 
             {/* Date Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#1e293b', padding: '6px 12px', borderRadius: '6px', border: '1px solid #334155' }}>
-              <Calendar size={16} color="#ef4444" />
-              <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Date:</label>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              backgroundColor: 'rgba(30, 41, 59, 0.75)', padding: '7px 14px',
+              borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.12)',
+              backdropFilter: 'blur(8px)'
+            }}>
+              <Calendar size={16} color="#f43f5e" />
+              <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Date:</label>
               <input 
                 type="date" 
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
-                style={{ background: 'transparent', color: '#ffffff', border: 'none', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+                style={{ background: 'transparent', color: '#ffffff', border: 'none', fontWeight: 700, outline: 'none', cursor: 'pointer', fontSize: '0.85rem' }}
               />
             </div>
 
             {/* Service / Sales Switch */}
-            <div style={{ display: 'flex', backgroundColor: '#1e293b', borderRadius: '6px', padding: '2px', border: '1px solid #334155' }}>
+            <div style={{
+              display: 'flex', backgroundColor: 'rgba(15, 23, 42, 0.85)',
+              borderRadius: '8px', padding: '3px', border: '1px solid rgba(255, 255, 255, 0.12)'
+            }}>
               <button
                 onClick={() => setSheetType('SERVICE')}
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: '4px',
+                  padding: '7px 16px',
+                  borderRadius: '6px',
                   border: 'none',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
                   cursor: 'pointer',
-                  backgroundColor: sheetType === 'SERVICE' ? '#d32f2f' : 'transparent',
+                  backgroundColor: sheetType === 'SERVICE' ? '#e11d48' : 'transparent',
                   color: '#ffffff',
+                  boxShadow: sheetType === 'SERVICE' ? '0 2px 10px rgba(225, 29, 72, 0.4)' : 'none',
                   transition: '0.2s'
                 }}
               >
@@ -741,14 +765,15 @@ export default function App() {
               <button
                 onClick={() => setSheetType('SALES')}
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: '4px',
+                  padding: '7px 16px',
+                  borderRadius: '6px',
                   border: 'none',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
                   cursor: 'pointer',
-                  backgroundColor: sheetType === 'SALES' ? '#d32f2f' : 'transparent',
+                  backgroundColor: sheetType === 'SALES' ? '#e11d48' : 'transparent',
                   color: '#ffffff',
+                  boxShadow: sheetType === 'SALES' ? '0 2px 10px rgba(225, 29, 72, 0.4)' : 'none',
                   transition: '0.2s'
                 }}
               >
@@ -760,14 +785,15 @@ export default function App() {
               onClick={fetchDaySheet}
               title="Refresh Day Sheet"
               style={{
-                background: '#334155',
-                border: 'none',
+                background: 'rgba(30, 41, 59, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
                 color: '#fff',
-                padding: '8px',
-                borderRadius: '6px',
+                padding: '9px',
+                borderRadius: '8px',
                 cursor: 'pointer',
                 display: 'flex',
-                alignItems: 'center'
+                alignItems: 'center',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
               }}
             >
               <RefreshCw size={16} className={loading ? 'spin' : ''} />
@@ -779,21 +805,22 @@ export default function App() {
               onClick={() => setShowResetSystemModal(true)}
               title="Reset Entire System (Delete All Data & Paths, Start from Scratch)"
               style={{
-                background: '#450a0a',
-                border: '1px solid #991b1b',
-                color: '#fca5a5',
-                padding: '6px 12px',
-                borderRadius: '6px',
+                background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)',
+                border: '1px solid #b91c1c',
+                color: '#fee2e2',
+                padding: '8px 14px',
+                borderRadius: '8px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                gap: '7px',
                 fontSize: '0.78rem',
                 fontWeight: 700,
+                boxShadow: '0 2px 8px rgba(185, 28, 28, 0.35)',
                 transition: '0.2s'
               }}
             >
-              <RotateCcw size={14} color="#f87171" />
+              <RotateCcw size={14} color="#fca5a5" />
               <span>Reset All (Scratch)</span>
             </button>
           </div>
@@ -801,11 +828,11 @@ export default function App() {
         </div>
 
         {/* Navigation Tabs */}
-        <nav style={{ display: 'flex', gap: '8px', marginTop: '14px', borderTop: '1px solid #334155', paddingTop: '10px', flexWrap: 'wrap' }}>
+        <nav style={{ display: 'flex', gap: '10px', marginTop: '16px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '12px', flexWrap: 'wrap' }}>
           {[
             { id: 'daysheet', label: 'Day Sheet', icon: FileText },
             { id: 'receipts', label: 'Receipts Register', icon: List },
-            { id: 'sync', label: 'Backup Sync', icon: Zap },
+            { id: 'sync', label: 'Backup Sync & Automation', icon: Zap },
             { id: 'audit', label: 'Audit Trail', icon: History }
           ].map(tab => {
             const Icon = tab.icon;
@@ -819,21 +846,29 @@ export default function App() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
+                  padding: '9px 18px',
+                  borderRadius: '8px',
+                  border: isActive ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+                  fontSize: '0.86rem',
+                  fontWeight: isActive ? 800 : 600,
                   cursor: 'pointer',
-                  backgroundColor: isActive ? '#d32f2f' : '#1e293b',
+                  backgroundColor: isActive ? '#e11d48' : 'rgba(30, 41, 59, 0.65)',
                   color: '#ffffff',
-                  transition: '0.2s',
+                  boxShadow: isActive ? '0 4px 14px rgba(225, 29, 72, 0.4)' : 'none',
+                  transition: 'all 0.2s ease',
                   position: 'relative'
                 }}
               >
                 <Icon size={16} />
                 <span>{tab.label}</span>
-                {badge && <span style={{ position: 'absolute', top: '4px', right: '4px', background: '#f59e0b', borderRadius: '50%', width: '8px', height: '8px' }} />}
+                {badge && (
+                  <span style={{
+                    position: 'absolute', top: '5px', right: '5px',
+                    background: '#f59e0b', borderRadius: '50%',
+                    width: '8px', height: '8px',
+                    boxShadow: '0 0 6px #f59e0b'
+                  }} />
+                )}
               </button>
             );
           })}
@@ -841,7 +876,7 @@ export default function App() {
       </header>
 
       {/* MAIN CONTENT AREA */}
-      <main style={{ flex: 1, padding: '20px', maxWidth: '1440px', width: '100%', margin: '0 auto' }}>
+      <main style={{ flex: 1, padding: '24px', maxWidth: '1480px', width: '100%', margin: '0 auto' }}>
 
         {/* ========================================================================= */}
         {/* TAB 1: DAY SHEET (MATCHES DAY SHEET.xlsx EXACT SPECIFICATION)             */}
@@ -849,42 +884,41 @@ export default function App() {
         {activeTab === 'daysheet' && (
           <div>
             {/* Top Operational Action Bar (No-Print) */}
-            <div className="no-print" style={{
+            <div className="no-print premium-card" style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '16px',
-              backgroundColor: '#ffffff',
-              padding: '14px 20px',
-              borderRadius: '8px',
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+              marginBottom: '18px',
+              padding: '16px 22px',
+              flexWrap: 'wrap',
+              gap: '14px'
             }}>
               <div>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
-                  {sheetType === 'SERVICE' ? 'CASH SHEET â€” WORKSHOP' : 'CASH SHEET â€” SALES'}
-                </span>
-                <span style={{ marginLeft: '12px', fontSize: '0.85rem', color: '#64748b' }}>
-                  Branch: <strong>{currentBranch?.name}</strong> | Date: <strong>{selectedDate}</strong>
-                </span>
+                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', letterSpacing: '0.3px' }}>
+                  {sheetType === 'SERVICE' ? 'CASH SHEET — WORKSHOP' : 'CASH SHEET — SALES'}
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
+                  Branch: <strong style={{ color: '#0f172a' }}>{currentBranch?.name}</strong> | Date: <strong style={{ color: '#0f172a' }}>{selectedDate}</strong>
+                </div>
               </div>
 
               {/* Status Badge & Actions */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <div style={{
-                  padding: '6px 12px',
+                  padding: '7px 14px',
                   borderRadius: '20px',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '7px',
                   backgroundColor: isReconciled ? '#ecfdf5' : '#fef2f2',
                   color: isReconciled ? '#059669' : '#dc2626',
-                  border: `1px solid ${isReconciled ? '#a7f3d0' : '#fecaca'}`
+                  border: `1.5px solid ${isReconciled ? '#a7f3d0' : '#fecaca'}`,
+                  boxShadow: isReconciled ? '0 2px 8px rgba(16, 185, 129, 0.15)' : '0 2px 8px rgba(239, 68, 68, 0.15)'
                 }}>
                   {isReconciled ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
-                  <span>{isReconciled ? 'CASH RECONCILED (â‚¹0.00 Diff)' : `MISMATCH: Diff â‚¹${cashDiff.toFixed(2)}`}</span>
+                  <span>{isReconciled ? 'CASH RECONCILED (₹0.00 Diff)' : `MISMATCH: Diff ₹${cashDiff.toFixed(2)}`}</span>
                 </div>
 
                 <button
@@ -894,14 +928,15 @@ export default function App() {
                     backgroundColor: '#0f172a',
                     color: '#ffffff',
                     border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    fontWeight: 600,
+                    padding: '9px 18px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
                     fontSize: '0.85rem',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '7px',
+                    boxShadow: '0 2px 6px rgba(15, 23, 42, 0.2)'
                   }}
                 >
                   <ShieldCheck size={16} />
@@ -911,17 +946,18 @@ export default function App() {
                 <button
                   onClick={() => window.print()}
                   style={{
-                    backgroundColor: '#d32f2f',
+                    background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
                     color: '#ffffff',
                     border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    fontWeight: 600,
+                    padding: '9px 18px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
                     fontSize: '0.85rem',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '7px',
+                    boxShadow: '0 4px 12px rgba(225, 29, 72, 0.3)'
                   }}
                 >
                   <Printer size={16} />
@@ -932,16 +968,17 @@ export default function App() {
                   href={`/api/daysheet/export-excel?branch_id=${selectedBranchId}&date=${selectedDate}&type=${sheetType}`}
                   download
                   style={{
-                    backgroundColor: '#059669',
+                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                     color: '#ffffff',
                     textDecoration: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    fontWeight: 600,
+                    padding: '9px 18px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
                     fontSize: '0.85rem',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '7px',
+                    boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)'
                   }}
                 >
                   <Download size={16} />
@@ -950,44 +987,58 @@ export default function App() {
               </div>
             </div>
 
-            {/* Summary KPI Badges (No-Print) */}
+            {/* Summary KPI Cards (No-Print) */}
             <div className="no-print" style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-              gap: '14px',
-              marginBottom: '20px'
+              gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+              gap: '16px',
+              marginBottom: '22px'
             }}>
-              <div style={{ backgroundColor: '#ffffff', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Cash Receipts Today</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>
-                  â‚¹{cashRecsTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              <div className="kpi-card" style={{ ['--kpi-accent' as any]: '#10b981' }}>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Cash Receipts Today
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '2px' }}>{cashReceipts.length} Cash Receipts</div>
+                <div className="num-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
+                  ₹{cashRecsTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: '0.76rem', color: '#059669', fontWeight: 700, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>✓</span> {cashReceipts.length} Cash Receipts Recorded
+                </div>
               </div>
 
-              <div style={{ backgroundColor: '#ffffff', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>PhonePe / Digital Receipts</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#2563eb', marginTop: '4px' }}>
-                  â‚¹{(daySheet?.totalNonCashReceipts || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              <div className="kpi-card" style={{ ['--kpi-accent' as any]: '#6366f1' }}>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Digital / UPI / Bank Receipts
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#2563eb', marginTop: '2px' }}>{nonCashReceipts.length} UPI/NEFT Receipts</div>
+                <div className="num-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: '#4338ca', marginTop: '6px' }}>
+                  ₹{(daySheet?.totalNonCashReceipts || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: '0.76rem', color: '#4338ca', fontWeight: 700, marginTop: '4px' }}>
+                  {nonCashReceipts.length} PhonePe / NEFT Receipts
+                </div>
               </div>
 
-              <div style={{ backgroundColor: '#ffffff', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Bank Deposits / Vouchers</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#b45309', marginTop: '4px' }}>
-                  â‚¹{currentTotalDeposits.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              <div className="kpi-card" style={{ ['--kpi-accent' as any]: '#f59e0b' }}>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Bank Deposits / Expenses
                 </div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>Deposited into Bank / Expenses</div>
+                <div className="num-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: '#b45309', marginTop: '6px' }}>
+                  ₹{currentTotalDeposits.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: '0.76rem', color: '#b45309', fontWeight: 600, marginTop: '4px' }}>
+                  {deposits.length} Bank Deposits / Cash Vouchers
+                </div>
               </div>
 
-              <div style={{ backgroundColor: '#ffffff', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Physical Cash Counted</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: isReconciled ? '#059669' : '#dc2626', marginTop: '4px' }}>
-                  â‚¹{currentTotalDenom.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+              <div className="kpi-card" style={{ ['--kpi-accent' as any]: isReconciled ? '#10b981' : '#ef4444' }}>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Physical Cash Counted
                 </div>
-                <div style={{ fontSize: '0.75rem', color: isReconciled ? '#059669' : '#dc2626', marginTop: '2px' }}>
-                  {isReconciled ? 'âœ“ Matched Closing Cash' : `Difference: â‚¹${cashDiff.toFixed(2)}`}
+                <div className="num-mono" style={{ fontSize: '1.5rem', fontWeight: 800, color: isReconciled ? '#059669' : '#dc2626', marginTop: '6px' }}>
+                  ₹{currentTotalDenom.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: '0.76rem', color: isReconciled ? '#059669' : '#dc2626', fontWeight: 700, marginTop: '4px' }}>
+                  {isReconciled ? '✓ Matched Closing Cash (₹0 Diff)' : `Difference: ₹${cashDiff.toFixed(2)}`}
                 </div>
               </div>
             </div>
@@ -1191,9 +1242,10 @@ export default function App() {
                               {deposits.length > 1 && (
                                 <button 
                                   onClick={() => removeDepositRow(idx)}
-                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 700 }}
+                                  title="Delete row"
+                                  style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 800, fontSize: '1rem', lineHeight: 1 }}
                                 >
-                                  Ã—
+                                  ×
                                 </button>
                               )}
                             </td>
@@ -1358,7 +1410,7 @@ export default function App() {
                             DENOMINATIONS RECONCILIATION
                           </td>
                           <td style={{ padding: '8px', border: '1px solid #0f172a', textAlign: 'right', fontWeight: 800, color: isReconciled ? '#059669' : '#dc2626' }}>
-                            {isReconciled ? 'BALANCED âœ“' : `DIFF: â‚¹${cashDiff.toFixed(2)}`}
+                            {isReconciled ? 'BALANCED ✓' : `DIFF: ₹${cashDiff.toFixed(2)}`}
                           </td>
                         </tr>
                       </tbody>
@@ -1524,7 +1576,7 @@ export default function App() {
                           </span>
                         </td>
                         <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 800, fontSize: '0.95rem' }}>
-                          â‚¹{r.amount.toFixed(2)}
+                          ₹{r.amount.toFixed(2)}
                         </td>
                         <td style={{ padding: '10px 12px', fontSize: '0.8rem', color: '#475569', maxWidth: '240px' }}>
                           <div>{r.received_towards}</div>
@@ -1596,79 +1648,89 @@ export default function App() {
           <div style={{ maxWidth: '960px', margin: '0 auto' }}>
 
             {/* â”€â”€ Watcher Status Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <div style={{
-              backgroundColor: '#ffffff', borderRadius: '10px',
-              border: '1px solid #e2e8f0', padding: '20px', marginBottom: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-            }}>
+            <div className="premium-card" style={{ padding: '24px', marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
-                <div>
-                  <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
-                    ðŸ“‚ Backup Excel Auto-Sync
-                  </h2>
-                  <p style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                    Connected to <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '3px', fontFamily: 'monospace' }}>
-                      {syncStatus?.sourceFile ? syncStatus.sourceFile.split(/[/\\]/).pop() : 'Service_Data_Backup.xlsx'}
-                    </code>
-                    {' '}â€” the system reads new receipts from this file and populates the Day Sheet automatically.
-                  </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '42px', height: '42px', borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(225, 29, 72, 0.25)', flexShrink: 0
+                  }}>
+                    <FileCheck size={22} color="#ffffff" />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+                      Backup Excel Auto-Sync Engine
+                    </h2>
+                    <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '4px 0 0 0' }}>
+                      Connected to <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#0f172a' }}>
+                        {syncStatus?.sourceFile ? syncStatus.sourceFile.split(/[/\\]/).pop() : 'Service_Data_Backup.xlsx'}
+                      </code>
+                      {' '}— monitors Excel updates and populates the Day Sheet automatically.
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={fetchSyncStatus}
-                  style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '7px 12px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600 }}
+                  className="premium-btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem' }}
                 >
                   <RefreshCw size={14} /> Refresh Status
                 </button>
               </div>
 
               {/* Status indicators */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
                 {/* Watcher status */}
                 <div style={{
-                  padding: '12px 16px', borderRadius: '8px', border: '1px solid',
+                  padding: '14px 18px', borderRadius: '12px', border: '1px solid',
                   borderColor: syncStatus?.watcherActive ? '#a7f3d0' : '#fde68a',
-                  backgroundColor: syncStatus?.watcherActive ? '#ecfdf5' : '#fffbeb'
+                  backgroundColor: syncStatus?.watcherActive ? '#f0fdf4' : '#fffbeb',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                     {syncStatus?.watcherActive
                       ? <Wifi size={15} color="#059669" />
                       : <WifiOff size={15} color="#d97706" />}
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: syncStatus?.watcherActive ? '#059669' : '#d97706' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: syncStatus?.watcherActive ? '#059669' : '#d97706' }}>
                       File Watcher
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: syncStatus?.watcherActive ? '#065f46' : '#92400e' }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: syncStatus?.watcherActive ? '#065f46' : '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {syncStatus?.watcherActive && <span className="live-dot" style={{ backgroundColor: '#10b981' }} />}
                     {syncStatus === null ? 'Checking...' : syncStatus.watcherActive ? 'ACTIVE' : 'INACTIVE'}
                   </div>
                 </div>
 
                 {/* Source file status */}
                 <div style={{
-                  padding: '12px 16px', borderRadius: '8px', border: '1px solid',
+                  padding: '14px 18px', borderRadius: '12px', border: '1px solid',
                   borderColor: syncStatus?.sourceFileExists ? '#a7f3d0' : '#fecaca',
-                  backgroundColor: syncStatus?.sourceFileExists ? '#ecfdf5' : '#fef2f2'
+                  backgroundColor: syncStatus?.sourceFileExists ? '#f0fdf4' : '#fef2f2',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
                 }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: syncStatus?.sourceFileExists ? '#059669' : '#dc2626', marginBottom: '4px' }}>Source File</div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: syncStatus?.sourceFileExists ? '#065f46' : '#991b1b' }}>
-                    {syncStatus === null ? '...' : syncStatus.sourceFileExists ? 'FOUND âœ“' : 'NOT FOUND âœ—'}
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: syncStatus?.sourceFileExists ? '#059669' : '#dc2626', marginBottom: '6px' }}>Source File</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: syncStatus?.sourceFileExists ? '#065f46' : '#991b1b' }}>
+                    {syncStatus === null ? '...' : syncStatus.sourceFileExists ? 'FOUND ✓' : 'NOT FOUND ✗'}
                   </div>
                 </div>
 
                 {/* Last sync time */}
-                <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}>Last Sync</div>
+                <div style={{ padding: '14px 18px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '6px' }}>Last Sync</div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
-                    {syncStatus?.lastSyncTime ? new Date(syncStatus.lastSyncTime).toLocaleString() : 'Never'}
+                    {syncStatus?.lastSyncTime ? new Date(syncStatus.lastSyncTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Never'}
                   </div>
                 </div>
 
                 {/* Last result */}
-                <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '4px' }}>Last Result</div>
+                <div style={{ padding: '14px 18px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b', marginBottom: '6px' }}>Last Result</div>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
                     {syncStatus?.lastInserted != null
                       ? `+${syncStatus?.lastInserted ?? 0} new · ${syncStatus?.lastDuplicates ?? 0} dup`
-                      : 'â€”'}
+                      : '—'}
                   </div>
                 </div>
               </div>
@@ -1807,37 +1869,38 @@ export default function App() {
                 </div>
               )}
             </div>
-            {/* â”€â”€ Action Cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+            {/* Action Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' }}>
 
               {/* Card 1: Sync from disk */}
-              <div style={{
-                backgroundColor: '#ffffff', borderRadius: '10px',
-                border: '2px solid #e2e8f0', padding: '24px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                  <div style={{ backgroundColor: '#0f172a', borderRadius: '8px', padding: '8px', display: 'flex' }}>
-                    <Zap size={20} color="#ffffff" />
+              <div className="premium-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{
+                      width: '40px', height: '40px', borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 4px 10px rgba(15, 23, 42, 0.25)', flexShrink: 0
+                    }}>
+                      <Zap size={20} color="#38bdf8" />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>Sync from Server File</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Reads the live configured backup path</div>
+                    </div>
                   </div>
-                  <div>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>Sync from Server File</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Reads the configured backup path</div>
-                  </div>
+                  <p style={{ fontSize: '0.83rem', color: '#64748b', marginBottom: '20px', lineHeight: 1.6 }}>
+                    Click to immediately scan and ingest new receipts directly from the server backup Excel workbook. Duplicate receipts are skipped automatically.
+                  </p>
                 </div>
-                <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '16px', lineHeight: 1.5 }}>
-                  Click to immediately read the backup Excel file on disk. New receipts are imported; duplicates are skipped automatically.
-                  The file watcher does this automatically on every save.
-                </p>
                 <button
                   onClick={handleSyncFromDisk}
                   disabled={syncLoading}
+                  className="premium-btn-primary"
                   style={{
-                    width: '100%', padding: '11px', borderRadius: '8px',
-                    border: 'none', backgroundColor: '#0f172a', color: '#fff',
-                    fontWeight: 700, fontSize: '0.9rem', cursor: syncLoading ? 'not-allowed' : 'pointer',
-                    opacity: syncLoading ? 0.7 : 1, display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', gap: '8px', transition: '0.2s'
+                    width: '100%', padding: '12px',
+                    backgroundColor: '#0f172a',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                   }}
                 >
                   {syncLoading ? <RefreshCw size={16} className="spin" /> : <Zap size={16} />}
@@ -1846,45 +1909,45 @@ export default function App() {
               </div>
 
               {/* Card 2: Upload file */}
-              <div style={{
-                backgroundColor: '#ffffff', borderRadius: '10px',
-                border: '2px solid #e2e8f0', padding: '24px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                  <div style={{ backgroundColor: '#d32f2f', borderRadius: '8px', padding: '8px', display: 'flex' }}>
-                    <Upload size={20} color="#ffffff" />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>Upload Backup File</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Drag in a backup from another location</div>
-                  </div>
-                </div>
-                <div style={{
-                  border: '2px dashed #cbd5e1', borderRadius: '8px', padding: '16px',
-                  textAlign: 'center', backgroundColor: '#f8fafc', marginBottom: '12px',
-                  cursor: 'pointer'
-                }}>
-                  <input
-                    type="file" accept=".xlsx,.xls"
-                    onChange={(e) => setImportFile(e.target.files ? e.target.files[0] : null)}
-                    style={{ fontSize: '0.82rem', width: '100%' }}
-                  />
-                  {importFile && (
-                    <div style={{ marginTop: '6px', fontSize: '0.8rem', color: '#059669', fontWeight: 600 }}>
-                      âœ“ {importFile.name}
+              <div className="premium-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{
+                      width: '40px', height: '40px', borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: '0 4px 10px rgba(225, 29, 72, 0.25)', flexShrink: 0
+                    }}>
+                      <Upload size={20} color="#ffffff" />
                     </div>
-                  )}
+                    <div>
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>Upload Backup File</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Ingest backup from local computer or flash drive</div>
+                    </div>
+                  </div>
+                  <div style={{
+                    border: '2px dashed #cbd5e1', borderRadius: '10px', padding: '16px',
+                    textAlign: 'center', backgroundColor: '#f8fafc', marginBottom: '16px',
+                    cursor: 'pointer'
+                  }}>
+                    <input
+                      type="file" accept=".xlsx,.xls"
+                      onChange={(e) => setImportFile(e.target.files ? e.target.files[0] : null)}
+                      style={{ fontSize: '0.82rem', width: '100%' }}
+                    />
+                    {importFile && (
+                      <div style={{ marginTop: '8px', fontSize: '0.8rem', color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                        <span>✓</span> {importFile.name}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={handleUploadAndSync}
                   disabled={syncLoading || !importFile}
+                  className="premium-btn-primary"
                   style={{
-                    width: '100%', padding: '11px', borderRadius: '8px',
-                    border: 'none', backgroundColor: '#d32f2f', color: '#fff',
-                    fontWeight: 700, fontSize: '0.9rem',
-                    cursor: (syncLoading || !importFile) ? 'not-allowed' : 'pointer',
-                    opacity: (syncLoading || !importFile) ? 0.6 : 1,
+                    width: '100%', padding: '12px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
                   }}
                 >
@@ -1894,10 +1957,10 @@ export default function App() {
               </div>
             </div>
 
-            {/* â”€â”€ Sync Result â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+            {/* Sync Result */}
             {syncError && (
               <div style={{ marginBottom: '16px', padding: '12px 16px', borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontWeight: 600, fontSize: '0.9rem' }}>
-                âš  {syncError}
+                ⚠️ {syncError}
               </div>
             )}
 
@@ -2548,7 +2611,7 @@ export default function App() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Amount (â‚¹):</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>Amount (₹):</label>
                 <input 
                   type="number"
                   step="any"
@@ -2615,15 +2678,32 @@ export default function App() {
 
       {/* FOOTER */}
       <footer className="no-print" style={{
-        backgroundColor: '#0f172a',
+        background: 'linear-gradient(180deg, #0f172a 0%, #090d16 100%)',
         color: '#94a3b8',
-        padding: '12px 24px',
+        padding: '16px 24px',
         textAlign: 'center',
-        fontSize: '0.75rem',
-        borderTop: '1px solid #334155',
-        marginTop: 'auto'
+        fontSize: '0.78rem',
+        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        marginTop: 'auto',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '12px'
       }}>
-        Bellary Motors Sales Pvt. Ltd. â€” Automotive Accounting Day Sheet System | Connected to Persistent Local Database
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontWeight: 700, color: '#f1f5f9' }}>Bellary Motors Sales Pvt. Ltd.</span>
+          <span style={{ color: '#475569' }}>|</span>
+          <span>Automotive Accounting & Day Sheet Portal</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.74rem' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981' }}>
+            <span className="live-dot" style={{ backgroundColor: '#10b981', width: '6px', height: '6px' }} />
+            SQLite Persistent Engine Active
+          </span>
+          <span style={{ color: '#475569' }}>•</span>
+          <span>Port: 5000 / 5173 LAN</span>
+        </div>
       </footer>
 
     </div>
