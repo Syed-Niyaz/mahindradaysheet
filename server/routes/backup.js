@@ -89,4 +89,45 @@ router.post('/restore', async (req, res) => {
     }
 });
 
+// POST /api/backup/reset-system - deletes all data, resets paths, starts from scratch
+router.post('/reset-system', async (req, res) => {
+    try {
+        // Step 1: Create a safety backup first so data is never permanently lost
+        await createBackup('pre_system_reset');
+
+        // Step 2: Delete all business data and reset sequences in a single transaction
+        db.transaction(() => {
+            db.exec(`
+                DELETE FROM receipts;
+                DELETE FROM day_sheet_deposits;
+                DELETE FROM day_sheet_denominations;
+                DELETE FROM day_sheets;
+                DELETE FROM import_log;
+                DELETE FROM audit_logs;
+                DELETE FROM settings;
+                DELETE FROM sqlite_sequence WHERE name IN (
+                    'receipts', 'day_sheets', 'day_sheet_deposits', 
+                    'day_sheet_denominations', 'import_log', 'audit_logs'
+                );
+                INSERT INTO settings (key, value) VALUES ('initial_seed_completed', 'true');
+            `);
+        })();
+
+        // Step 3: Restart watcher with clean default config
+        try {
+            const { stopWatcher, startWatcher } = require('../services/syncService');
+            stopWatcher();
+            setTimeout(() => startWatcher(), 200);
+        } catch (e) { /* non-critical */ }
+
+        res.json({
+            success: true,
+            message: 'All data, receipts, Day Sheets, logs, and paths have been completely reset to scratch.'
+        });
+    } catch (err) {
+        console.error('[Reset System Error]', err);
+        res.status(500).json({ success: false, error: `Reset failed: ${err.message}` });
+    }
+});
+
 module.exports = router;

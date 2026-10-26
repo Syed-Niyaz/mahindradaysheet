@@ -3,7 +3,7 @@ import {
   FileText, List, Upload, History, Printer, Download, 
   CheckCircle, AlertTriangle, RefreshCw, Search, ShieldCheck, 
   Building2, Calendar, Edit3, XCircle, Zap, Clock, FileCheck,
-  WifiOff, Wifi, AlertCircle, Settings, ChevronDown, Trash2
+  WifiOff, Wifi, AlertCircle, Settings, ChevronDown, Trash2, RotateCcw
 } from 'lucide-react';
 
 interface Branch {
@@ -141,6 +141,10 @@ export default function App() {
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [deleteAllLoading, setDeleteAllLoading] = useState(false);
   const [deleteAllScope, setDeleteAllScope] = useState<'filtered'|'all'>('filtered');
+
+  // Reset Entire System Modal
+  const [showResetSystemModal, setShowResetSystemModal] = useState(false);
+  const [resetSystemLoading, setResetSystemLoading] = useState(false);
 
 
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -561,6 +565,32 @@ export default function App() {
     }
   };
 
+  // Reset Entire System to Factory Scratch
+  const handleResetSystem = async () => {
+    setResetSystemLoading(true);
+    try {
+      const res = await fetch('/api/backup/reset-system', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        showNotification(data.message || 'System completely reset to scratch!', 'success');
+        setShowResetSystemModal(false);
+        fetchReceipts();
+        fetchDaySheet();
+        fetchSyncStatus();
+        fetchBackups();
+      } else {
+        showNotification(data.error || 'Reset failed', 'error');
+      }
+    } catch (err: any) {
+      showNotification(err.message, 'error');
+    } finally {
+      setResetSystemLoading(false);
+    }
+  };
+
   // Update Receipt Action
   const handleUpdateReceipt = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -741,6 +771,30 @@ export default function App() {
               }}
             >
               <RefreshCw size={16} className={loading ? 'spin' : ''} />
+            </button>
+
+            {/* Reset Entire System Button */}
+            <button
+              id="reset-entire-system-header-btn"
+              onClick={() => setShowResetSystemModal(true)}
+              title="Reset Entire System (Delete All Data & Paths, Start from Scratch)"
+              style={{
+                background: '#450a0a',
+                border: '1px solid #991b1b',
+                color: '#fca5a5',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                transition: '0.2s'
+              }}
+            >
+              <RotateCcw size={14} color="#f87171" />
+              <span>Reset All (Scratch)</span>
             </button>
           </div>
 
@@ -2080,6 +2134,40 @@ export default function App() {
                 </table>
               </div>
             </div>
+
+            {/* Factory Reset to Scratch Card */}
+            <div style={{
+              backgroundColor: '#fff', borderRadius: '10px',
+              border: '1px solid #fecaca', padding: '20px', marginTop: '20px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex',
+              justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ backgroundColor: '#fee2e2', borderRadius: '8px', padding: '10px', display: 'flex' }}>
+                  <RotateCcw size={22} color="#dc2626" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#991b1b' }}>
+                    Reset Entire System to Scratch
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                    Deletes all receipts, Day Sheets, sync logs, and custom file paths to start 100% clean. A safety backup is saved automatically.
+                  </div>
+                </div>
+              </div>
+              <button
+                id="reset-entire-system-tab-btn"
+                onClick={() => setShowResetSystemModal(true)}
+                style={{
+                  background: '#dc2626', color: '#ffffff', border: 'none',
+                  padding: '9px 18px', borderRadius: '6px', cursor: 'pointer',
+                  fontWeight: 700, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px'
+                }}
+              >
+                <RotateCcw size={15} />
+                Reset Everything to Scratch
+              </button>
+            </div>
           </div>
         )}
 
@@ -2284,6 +2372,79 @@ export default function App() {
               >
                 <Trash2 size={16} />
                 {deleteAllLoading ? 'Deleting...' : 'Yes, Delete All Permanently'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESET SYSTEM TO SCRATCH MODAL */}
+      {showResetSystemModal && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10002,
+        }}>
+          <div style={{
+            backgroundColor: '#fff', borderRadius: '14px', padding: '30px',
+            width: '500px', maxWidth: '95vw',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+            border: '3px solid #dc2626',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+              <div style={{ backgroundColor: '#fee2e2', borderRadius: '50%', width: '54px', height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <RotateCcw size={28} color="#dc2626" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#991b1b', margin: 0 }}>
+                  Reset System to Scratch
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '3px' }}>
+                  Complete factory reset of all data, paths, and settings
+                </div>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '14px', marginBottom: '18px', fontSize: '0.83rem', color: '#991b1b', lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 700, marginBottom: '6px' }}>🚨 What will be cleared:</div>
+              <ul style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <li>All <strong>Receipts</strong> (Service and Sales)</li>
+                <li>All <strong>Day Sheets, Denominations & Deposits</strong></li>
+                <li>All <strong>Sync History & Audit Logs</strong></li>
+                <li>Custom <strong>Backup File Paths</strong> reset to clean defaults</li>
+              </ul>
+            </div>
+
+            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 14px', marginBottom: '22px', fontSize: '0.8rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={18} color="#16a34a" style={{ flexShrink: 0 }} />
+              <span>A safety snapshot backup will be created automatically in <code>data/backups/</code> before clearing.</span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => setShowResetSystemModal(false)}
+                disabled={resetSystemLoading}
+                style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-reset-system-btn"
+                onClick={handleResetSystem}
+                disabled={resetSystemLoading}
+                style={{
+                  padding: '10px 22px', borderRadius: '8px', border: 'none',
+                  background: resetSystemLoading ? '#e2e8f0' : '#dc2626',
+                  color: resetSystemLoading ? '#94a3b8' : '#fff',
+                  fontWeight: 800, fontSize: '0.88rem',
+                  cursor: resetSystemLoading ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                }}
+              >
+                <RotateCcw size={16} className={resetSystemLoading ? 'spin' : ''} />
+                {resetSystemLoading ? 'Resetting Everything...' : 'Yes, Reset to Scratch'}
               </button>
             </div>
           </div>
