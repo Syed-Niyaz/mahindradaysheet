@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently -k -p \"[{name}]\" -n \"SERVER,CLIENT\" -c \"cyan,magenta\" \"node server/server.js\" \"npm run dev --prefix frontend\"",
-    "server": "node server/server.js",
+    "dev": "concurrently -k -p \"[{name}]\" -n \"SERVER,CLIENT\" -c \"cyan,magenta\" \"node --watch server/server.js\" \"npm run dev --prefix frontend\"",
+    "server": "node --watch server/server.js",
     "client": "npm run dev --prefix frontend",
     "build": "npm run build --prefix frontend",
     "start": "node server/server.js",
