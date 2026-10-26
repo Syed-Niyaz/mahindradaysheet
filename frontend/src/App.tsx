@@ -1877,12 +1877,12 @@ export default function App() {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                     <div style={{
-                      width: '40px', height: '40px', borderRadius: '10px',
-                      background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                      width: '42px', height: '42px', borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 4px 10px rgba(15, 23, 42, 0.25)', flexShrink: 0
+                      boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)', flexShrink: 0
                     }}>
-                      <Zap size={20} color="#38bdf8" />
+                      <Zap size={22} color="#ffffff" fill="#ffffff" />
                     </div>
                     <div>
                       <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>Sync from Server File</div>
@@ -1894,17 +1894,36 @@ export default function App() {
                   </p>
                 </div>
                 <button
+                  id="sync-now-from-disk-btn"
                   onClick={handleSyncFromDisk}
                   disabled={syncLoading}
-                  className="premium-btn-primary"
                   style={{
-                    width: '100%', padding: '12px',
-                    backgroundColor: '#0f172a',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                    width: '100%',
+                    padding: '13px 20px',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    background: syncLoading ? '#64748b' : 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.92rem',
+                    letterSpacing: '0.01em',
+                    cursor: syncLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    boxShadow: '0 4px 14px rgba(15, 23, 42, 0.3)',
+                    transition: 'all 0.2s ease'
                   }}
                 >
-                  {syncLoading ? <RefreshCw size={16} className="spin" /> : <Zap size={16} />}
-                  {syncLoading ? 'Syncing...' : 'Sync Now from Disk'}
+                  {syncLoading ? (
+                    <RefreshCw size={18} color="#38bdf8" className="spin" />
+                  ) : (
+                    <Zap size={18} color="#38bdf8" fill="#38bdf8" />
+                  )}
+                  <span style={{ color: '#ffffff', fontWeight: 800, letterSpacing: '0.02em' }}>
+                    {syncLoading ? 'Syncing Server File...' : 'Sync Now from Disk'}
+                  </span>
                 </button>
               </div>
 
@@ -1913,12 +1932,12 @@ export default function App() {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
                     <div style={{
-                      width: '40px', height: '40px', borderRadius: '10px',
+                      width: '42px', height: '42px', borderRadius: '10px',
                       background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 4px 10px rgba(225, 29, 72, 0.25)', flexShrink: 0
+                      boxShadow: '0 4px 12px rgba(225, 29, 72, 0.3)', flexShrink: 0
                     }}>
-                      <Upload size={20} color="#ffffff" />
+                      <Upload size={22} color="#ffffff" />
                     </div>
                     <div>
                       <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>Upload Backup File</div>
@@ -1943,16 +1962,29 @@ export default function App() {
                   </div>
                 </div>
                 <button
+                  id="upload-and-sync-btn"
                   onClick={handleUploadAndSync}
                   disabled={syncLoading || !importFile}
-                  className="premium-btn-primary"
                   style={{
-                    width: '100%', padding: '12px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'
+                    width: '100%',
+                    padding: '13px 20px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: (syncLoading || !importFile) ? '#cbd5e1' : 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.92rem',
+                    cursor: (syncLoading || !importFile) ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    boxShadow: (syncLoading || !importFile) ? 'none' : '0 4px 14px rgba(225, 29, 72, 0.35)',
+                    transition: 'all 0.2s ease'
                   }}
                 >
-                  <ShieldCheck size={16} />
-                  Upload & Sync (Duplicate Safe)
+                  <ShieldCheck size={18} color="#ffffff" />
+                  <span style={{ color: '#ffffff', fontWeight: 800 }}>Upload & Sync (Duplicate Safe)</span>
                 </button>
               </div>
             </div>
