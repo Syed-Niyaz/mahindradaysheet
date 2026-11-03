@@ -1,3 +1,4 @@
+import { generateDaySheetExcelBlob } from './daySheetExcelGenerator';
 // frontend/src/mockBackend.ts
 // Offline / Netlify Browser-Storage Mock API
 // Automatically intercepts /api/* calls when running on Netlify (or when backend is offline)
@@ -384,9 +385,34 @@ export function initBrowserStorageMock() {
     // 11. POST /api/daysheet
     if (pathname === '/api/daysheet' && method === 'POST') {
       const body = init?.body ? JSON.parse(init.body.toString()) : {};
-      const dsKey = `bm_ds_${body.branch_id || 1}_${body.sheet_date || getTodayIso()}_${body.sheet_type || 'SERVICE'}`;
+      const sheetDate = body.sheet_date || getTodayIso();
+      const branchId = body.branch_id || 1;
+      const sheetType = body.sheet_type || 'SERVICE';
+      const dsKey = `bm_ds_${branchId}_${sheetDate}_${sheetType}`;
       localStorage.setItem(dsKey, JSON.stringify(body));
-      return jsonResponse({ success: true, message: 'Saved successfully in browser storage' });
+
+      // Automatically register in Permanent Excel Archive list
+      try {
+        const archives = JSON.parse(localStorage.getItem('bm_demo_excel_archives') || '[]');
+        const masterFileName = `WORKSHOP_DAY_SHEET_BLY_${sheetDate}.xlsx`;
+        const newEntry = {
+          fileName: masterFileName,
+          date: sheetDate,
+          branchCode: 'BLY',
+          branchName: 'BALLARI (H.O)',
+          versionLabel: 'Latest',
+          isLatest: true,
+          sizeBytes: 15420,
+          sizeKB: '15.1',
+          modifiedAt: new Date().toISOString(),
+          downloadUrl: `/api/backup/download-excel/${encodeURIComponent(masterFileName)}`
+        };
+        const filtered = archives.filter((a: any) => a.fileName !== masterFileName);
+        filtered.unshift(newEntry);
+        localStorage.setItem('bm_demo_excel_archives', JSON.stringify(filtered));
+      } catch (_) {}
+
+      return jsonResponse({ success: true, message: 'Day Sheet saved and archived in browser storage', day_sheet_id: 1 });
     }
 
     // 12. GET /api/daysheet/dates
@@ -492,7 +518,122 @@ ${vouchersXml}
       });
     }
 
-    if (pathname === '/api/tally/exports' || pathname === '/api/tally/receipt-backup-list' || pathname === '/api/backup/excel-list') {
+    // EXCEL EXPORT & DOWNLOAD ENDPOINTS (Browser-native Excel generation)
+    if (pathname === '/api/daysheet/export-excel' || pathname === '/api/backup/download-day-sheet') {
+      const branchId = Number(parsed.searchParams.get('branch_id')) || 1;
+      const date = parsed.searchParams.get('date') || getTodayIso();
+      const type = (parsed.searchParams.get('type') || 'SERVICE').toUpperCase();
+
+      const receipts = getStoredReceipts().filter(r =>
+        r.branch_id === branchId &&
+        r.receipt_date === date &&
+        r.receipt_type === type &&
+        r.status === 'ACTIVE'
+      );
+      const cashReceipts = receipts.filter(r => (r.payment_mode || '').toLowerCase().includes('cash'));
+      const nonCashReceipts = receipts.filter(r => !(r.payment_mode || '').toLowerCase().includes('cash'));
+
+      const dsKey = `bm_ds_${branchId}_${date}_${type}`;
+      const savedDs = JSON.parse(localStorage.getItem(dsKey) || '{}');
+
+      const blob = generateDaySheetExcelBlob({
+        branchName: 'BALLARI (H.O)',
+        branchCode: 'BLY',
+        date,
+        type,
+        opening_balance: savedDs.opening_balance || 0,
+        cash_sales: cashReceipts.reduce((sum, r) => sum + r.amount, 0),
+        status: savedDs.status || 'VERIFIED',
+        cashReceipts,
+        nonCashReceipts,
+        denominations: savedDs.denominations || [],
+        expenses: savedDs.expenses || [],
+        deposits: savedDs.deposits || []
+      });
+
+      return new Response(blob, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="WORKSHOP_DAY_SHEET_BLY_${date}.xlsx"`
+        }
+      });
+    }
+
+    if (pathname.startsWith('/api/backup/download-excel/') || pathname.startsWith('/api/backup/download/')) {
+      const fileName = decodeURIComponent(pathname.split('/').pop() || '');
+      const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/);
+      const date = dateMatch ? dateMatch[1] : getTodayIso();
+
+      const receipts = getStoredReceipts().filter(r => r.receipt_date === date && r.status === 'ACTIVE');
+      const cashReceipts = receipts.filter(r => (r.payment_mode || '').toLowerCase().includes('cash'));
+      const nonCashReceipts = receipts.filter(r => !(r.payment_mode || '').toLowerCase().includes('cash'));
+
+      const dsKey = `bm_ds_1_${date}_SERVICE`;
+      const savedDs = JSON.parse(localStorage.getItem(dsKey) || '{}');
+
+      const blob = generateDaySheetExcelBlob({
+        branchName: 'BALLARI (H.O)',
+        branchCode: 'BLY',
+        date,
+        type: 'SERVICE',
+        opening_balance: savedDs.opening_balance || 0,
+        cash_sales: cashReceipts.reduce((sum, r) => sum + r.amount, 0),
+        status: savedDs.status || 'VERIFIED',
+        cashReceipts,
+        nonCashReceipts,
+        denominations: savedDs.denominations || [],
+        expenses: savedDs.expenses || [],
+        deposits: savedDs.deposits || []
+      });
+
+      return new Response(blob, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${fileName || `WORKSHOP_DAY_SHEET_BLY_${date}.xlsx`}"`
+        }
+      });
+    }
+
+    // 16. Permanent Day Sheet Excel Archive List
+    if (pathname === '/api/backup/excel-list') {
+      const archives = JSON.parse(localStorage.getItem('bm_demo_excel_archives') || '[]');
+      return jsonResponse({ success: true, backups: archives });
+    }
+
+    // 17. POST /api/backup/create-excel-now (Manual Backup trigger)
+    if (pathname === '/api/backup/create-excel-now' && method === 'POST') {
+      const body = init?.body ? JSON.parse(init.body.toString()) : {};
+      const date = body.date || getTodayIso();
+      const branchCode = 'BLY';
+      const masterFileName = `WORKSHOP_DAY_SHEET_${branchCode}_${date}.xlsx`;
+
+      const archives = JSON.parse(localStorage.getItem('bm_demo_excel_archives') || '[]');
+      const newEntry = {
+        fileName: masterFileName,
+        date,
+        branchCode,
+        branchName: 'BALLARI (H.O)',
+        versionLabel: 'Latest',
+        isLatest: true,
+        sizeBytes: 15420,
+        sizeKB: '15.1',
+        modifiedAt: new Date().toISOString(),
+        downloadUrl: `/api/backup/download-excel/${encodeURIComponent(masterFileName)}`
+      };
+      const filtered = archives.filter((a: any) => a.fileName !== masterFileName);
+      filtered.unshift(newEntry);
+      localStorage.setItem('bm_demo_excel_archives', JSON.stringify(filtered));
+
+      return jsonResponse({
+        success: true,
+        message: `Day Sheet Excel archived: ${masterFileName}`,
+        fileName: masterFileName
+      });
+    }
+
+    if (pathname === '/api/tally/exports' || pathname === '/api/tally/receipt-backup-list') {
       return jsonResponse({ success: true, files: [] });
     }
 

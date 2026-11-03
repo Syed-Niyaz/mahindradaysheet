@@ -343,16 +343,28 @@ export default function App() {
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
   const [exportModalStep, setExportModalStep] = useState<1 | 2>(1);
 
-  const handleExportConfirmed = () => {
-    const url = `/api/daysheet/export-excel?branch_id=${selectedBranchId}&date=${selectedDate}&type=${sheetType}`;
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = '';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setShowExportModal(false);
-    setExportModalStep(1);
+  const handleExportConfirmed = async () => {
+    try {
+      showNotification('Generating Day Sheet Excel...', 'info');
+      const res = await fetch(`/api/daysheet/export-excel?branch_id=${selectedBranchId}&date=${selectedDate}&type=${sheetType}`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `WORKSHOP_DAY_SHEET_BLY_${selectedDate}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      showNotification(`Day Sheet Excel downloaded for ${selectedDate}`, 'success');
+      fetchBackups();
+    } catch (err: any) {
+      showNotification(`Export failed: ${err.message}`, 'error');
+    } finally {
+      setShowExportModal(false);
+      setExportModalStep(1);
+    }
   };
 
   const [downloadCalendarDate, setDownloadCalendarDate] = useState<string>(() => getTodayIso());
@@ -433,20 +445,26 @@ export default function App() {
     }
   };
 
-  const handleDownloadDaySheetExcel = (dateParam?: string, branchParam?: number | 'ALL') => {
+  const handleDownloadDaySheetExcel = async (dateParam?: string, branchParam?: number | 'ALL') => {
     const targetDate = dateParam || downloadCalendarDate || selectedDate;
     const targetBranch = branchParam !== undefined ? branchParam : downloadBranchId;
 
-    if (targetBranch === 'ALL') {
-      branches.forEach((br, idx) => {
-        setTimeout(() => {
-          window.open(`/api/backup/download-day-sheet?branch_id=${br.id}&date=${targetDate}&type=${sheetType}`, '_blank');
-        }, idx * 500);
-      });
-      showNotification(`Downloading Day Sheets for all branches (${targetDate})...`, 'info');
-    } else {
-      window.location.href = `/api/backup/download-day-sheet?branch_id=${targetBranch}&date=${targetDate}&type=${sheetType}`;
-      showNotification(`Downloading Day Sheet for ${targetDate}...`, 'success');
+    try {
+      showNotification(`Downloading Day Sheet Excel (${targetDate})...`, 'info');
+      const res = await fetch(`/api/backup/download-day-sheet?branch_id=${targetBranch === 'ALL' ? 1 : targetBranch}&date=${targetDate}&type=${sheetType}`);
+      if (!res.ok) throw new Error(`Status ${res.status}`);
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `WORKSHOP_DAY_SHEET_BLY_${targetDate}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(link);
+      showNotification(`Downloaded Day Sheet Excel (${targetDate})`, 'success');
+    } catch (err: any) {
+      showNotification(`Download failed: ${err.message}`, 'error');
     }
   };
 
@@ -5413,7 +5431,27 @@ export default function App() {
                               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                                 <a
                                   href={b.downloadUrl}
-                                  download
+                                  download={b.fileName}
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                      showNotification(`Downloading ${b.fileName}...`, 'info');
+                                      const res = await fetch(b.downloadUrl);
+                                      if (!res.ok) throw new Error(`Status ${res.status}`);
+                                      const blob = await res.blob();
+                                      const url = window.URL.createObjectURL(blob);
+                                      const link = document.createElement('a');
+                                      link.href = url;
+                                      link.download = b.fileName;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      window.URL.revokeObjectURL(url);
+                                      document.body.removeChild(link);
+                                      showNotification(`Downloaded ${b.fileName}`, 'success');
+                                    } catch (err: any) {
+                                      showNotification(`Download error: ${err.message}`, 'error');
+                                    }
+                                  }}
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
@@ -5426,6 +5464,7 @@ export default function App() {
                                     fontWeight: 800,
                                     fontSize: '0.78rem',
                                     boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)',
+                                    cursor: 'pointer',
                                     transition: 'all 0.15s ease'
                                   }}
                                 >
