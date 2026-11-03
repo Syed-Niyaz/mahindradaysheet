@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+﻿@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   --primary: #e11d48;
@@ -37,6 +37,16 @@
   --font-mono: 'JetBrains Mono', monospace;
 }
 
+html {
+  font-size: 13.5px;
+}
+
+@media screen and (min-width: 1440px) {
+  html {
+    font-size: 14px;
+  }
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -54,9 +64,13 @@ body {
 
 /* Glassmorphism & luxury surfaces */
 .glass-header {
-  background: linear-gradient(135deg, #070a12 0%, #0d1322 45%, #141b2d 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+  background-color: #ffffff;
+  background-image: 
+    radial-gradient(#e2e8f0 1.25px, transparent 1.25px),
+    linear-gradient(90deg, rgba(225, 29, 72, 0.035) 0%, transparent 25%, transparent 75%, rgba(225, 29, 72, 0.035) 100%);
+  background-size: 24px 24px, 100% 100%;
+  border-bottom: 3px solid #e11d48;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
   position: relative;
 }
 
@@ -67,7 +81,7 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #e11d48 0%, #f43f5e 30%, #fb7185 60%, transparent 100%);
+  background: transparent;
 }
 
 .premium-card {
@@ -84,19 +98,19 @@ body {
 }
 
 .kpi-card {
-  border-radius: 12px;
-  padding: 16px 20px;
+  border-radius: 10px;
+  padding: 8px 14px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 
 .kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
 }
 
 .kpi-card::before {
@@ -238,45 +252,177 @@ button:active:not(:disabled) {
   background: #94a3b8;
 }
 
+@page {
+  size: A4 portrait;
+  margin: 6mm 7mm 6mm 7mm;
+}
+
 /* Print specific styles for Day Sheet */
+/* Print specific styles */
+/* Print specific styles for 3 receipts per A4 sheet */
 @media print {
-  body {
-    background: #ffffff !important;
-    color: #000000 !important;
-    font-size: 11pt !important;
+  @page {
+    size: A4 portrait;
+    margin: 6mm 8mm;
   }
 
-  .no-print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    zoom: 1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body > #root > div {
+    zoom: 1 !important;
+  }
+
+  /* Hide entire page elements by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Make ONLY print containers visible */
+  #receipt-print-sheet-entry,
+  #receipt-print-sheet-entry *,
+  #receipt-print-sheet-modal,
+  #receipt-print-sheet-modal * {
+    visibility: visible !important;
+  }
+
+  /* Hide the on-screen receipt form so it cannot create blank pages */
+  #new-receipt-form {
     display: none !important;
   }
 
-  .print-only {
-    display: block !important;
-  }
-
-  .print-page {
-    page-break-after: always;
+  /* Print sheet fills the A4 page: exactly 3 receipts, no wasted space */
+  #receipt-print-sheet-entry,
+  #receipt-print-sheet-modal {
+    display: flex !important;
+    flex-direction: column !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
     width: 100% !important;
+    height: 280mm !important;
+    max-height: 280mm !important;
     margin: 0 !important;
-    padding: 10mm !important;
-    box-shadow: none !important;
-    border: none !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
-  table {
-    border-collapse: collapse !important;
+  .receipt-print-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2mm !important;
+    height: 100% !important;
     width: 100% !important;
   }
 
-  th, td {
-    border: 1px solid #000000 !important;
-    padding: 4px 6px !important;
-    color: #000000 !important;
+  /* Each copy grows to exactly one third of the sheet and spreads its
+     contents so the three receipts use the full A4 height. */
+  .receipt-copy-item {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin-bottom: 0 !important;
+  }
+
+  .no-print,
+  .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* ── Day Sheet print: show the printable sheet with the branding header ── */
+  #day-sheet-print-area,
+  #day-sheet-print-area * {
+    visibility: visible !important;
+  }
+
+  #day-sheet-print-area {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 284mm !important;
+    max-height: 284mm !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+  }
+
+  /* Push the signature lines to the very bottom of the printed page */
+  #day-sheet-print-area .print-signatures {
+    margin-top: auto !important;
+    padding-top: 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #day-sheet-print-area .day-sheet-print-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    padding-bottom: 5px !important;
+    margin-bottom: 6px !important;
+    border-bottom: 1.5px solid #0f172a !important;
+  }
+
+  #day-sheet-print-area .day-sheet-print-logo-left {
+    width: 175px !important;
+    height: auto !important;
+    max-height: 62px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+  }
+
+  #day-sheet-print-area .day-sheet-print-logo-right {
+    width: 58px !important;
+    height: 58px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+  }
+
+  #day-sheet-print-area .day-sheet-print-company {
+    flex: 1 !important;
+    text-align: center !important;
+    line-height: 1.25 !important;
+  }
+
+  #day-sheet-print-area .day-sheet-print-company-name {
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.3px !important;
+    color: #1e3a8a !important;
+  }
+
+  #day-sheet-print-area .day-sheet-print-company-details {
+    font-size: 8.5px !important;
+    font-weight: 700 !important;
+    color: #475569 !important;
+    margin-top: 2px !important;
   }
 }
 
-@media screen {
-  .print-only {
-    display: none !important;
-  }
+/* Day Sheet branding header is print-only */
+.day-sheet-print-header {
+  display: none;
 }

@@ -1,0 +1,17 @@
+# Netlify configuration for Bellary Motors Day Sheet Frontend
+
+[build]
+  # Tell Netlify to build from the frontend folder
+  base = "frontend"
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA routing redirect: all routes route to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
