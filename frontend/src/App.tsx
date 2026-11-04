@@ -4294,7 +4294,7 @@ export default function App() {
         {/* TALLY EXPORT TAB                                                          */}
         {/* ========================================================================= */}
         {activeTab === 'tally' && (
-          <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ width: '100%', maxWidth: '1480px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '18px' }}>
 
             {/* Clean Professional Title Bar */}
             <div style={{
