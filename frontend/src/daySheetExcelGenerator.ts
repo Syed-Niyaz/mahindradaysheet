@@ -181,3 +181,4 @@ export function generateDaySheetExcelBlob(data: DaySheetData): Blob {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   });
 }
+

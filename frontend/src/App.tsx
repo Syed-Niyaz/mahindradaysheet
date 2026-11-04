@@ -4296,67 +4296,60 @@ export default function App() {
         {activeTab === 'tally' && (
           <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-            {/* Header Banner */}
+            {/* Clean Professional Title Bar */}
             <div style={{
-              background: 'linear-gradient(135deg, #090e1a 0%, #111a2e 50%, #1e293b 100%)',
-              borderRadius: '14px',
-              padding: '20px 26px',
+              backgroundColor: '#ffffff',
+              borderRadius: '10px',
+              padding: '16px 20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: '16px',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              boxShadow: '0 8px 24px -6px rgba(0, 0, 0, 0.35)',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
               flexWrap: 'wrap'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
-                  background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.35) 0%, rgba(37, 99, 235, 0.12) 100%)',
-                  padding: '12px',
-                  borderRadius: '12px',
+                  backgroundColor: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  padding: '9px',
+                  borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)'
+                  justifyContent: 'center'
                 }}>
-                  <Zap size={22} color="#38bdf8" />
+                  <Zap size={20} color="#2563eb" />
                 </div>
                 <div>
-                  <div style={{ color: '#ffffff', fontWeight: 800, fontSize: '1.12rem', letterSpacing: '0.3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    Tally XML Export &amp; ERP Integration
+                  <div style={{ color: '#0f172a', fontWeight: 800, fontSize: '1.05rem', letterSpacing: '0.2px' }}>
+                    Tally XML Export
                   </div>
-                  <div style={{ color: '#94a3b8', fontSize: '0.82rem', marginTop: '3px' }}>
-                    Generate standard 7-column voucher XML for seamless import into TallyPrime and Tally.ERP 9
+                  <div style={{ color: '#64748b', fontSize: '0.78rem', marginTop: '2px' }}>
+                    Standard 7-column voucher export for TallyPrime and Tally.ERP 9
                   </div>
                 </div>
               </div>
 
-              {/* Status Pills on Right */}
+              {/* Clean badges */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 10px',
-                  background: 'rgba(16, 185, 129, 0.12)',
-                  border: '1px solid rgba(16, 185, 129, 0.25)',
-                  borderRadius: '999px',
-                  color: '#34d399',
+                  padding: '3px 9px',
+                  backgroundColor: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  color: '#334155',
                   fontSize: '0.72rem',
                   fontWeight: 700
                 }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
                   TallyPrime &amp; ERP 9
                 </span>
                 <span style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '4px 10px',
-                  background: 'rgba(56, 189, 248, 0.1)',
-                  border: '1px solid rgba(56, 189, 248, 0.2)',
-                  borderRadius: '999px',
-                  color: '#38bdf8',
+                  padding: '3px 9px',
+                  backgroundColor: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  color: '#334155',
                   fontSize: '0.72rem',
                   fontWeight: 700
                 }}>
@@ -4366,7 +4359,7 @@ export default function App() {
             </div>
 
             {/* Export Generation Card */}
-            <div className="premium-card" style={{ padding: '24px 28px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.06)' }}>
+            <div style={{ backgroundColor: '#ffffff', padding: '20px 24px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '8px' }}>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '1.02rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4511,48 +4504,26 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Step-by-Step Instructions Card */}
+              {/* Simple Clean Note */}
               <div style={{
-                marginTop: '16px',
-                padding: '14px 18px',
+                marginTop: '14px',
+                padding: '10px 14px',
                 backgroundColor: '#f8fafc',
-                borderRadius: '10px',
+                borderRadius: '8px',
                 border: '1px solid #e2e8f0',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 flexWrap: 'wrap',
-                gap: '12px'
+                gap: '8px',
+                fontSize: '0.76rem',
+                color: '#475569'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#334155' }}>Workflow:</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', color: '#475569' }}>
-                    <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#e2e8f0', color: '#1e293b', fontWeight: 800, fontSize: '0.68rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>1</span>
-                    Select Date
-                  </div>
-                  <span style={{ color: '#cbd5e1' }}>&rarr;</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', color: '#475569' }}>
-                    <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#e2e8f0', color: '#1e293b', fontWeight: 800, fontSize: '0.68rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>2</span>
-                    Download XML or Save
-                  </div>
-                  <span style={{ color: '#cbd5e1' }}>&rarr;</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', color: '#475569' }}>
-                    <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#e2e8f0', color: '#1e293b', fontWeight: 800, fontSize: '0.68rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
-                    Open Tally &rarr; <em>Import Data &rarr; Vouchers</em>
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontWeight: 700, color: '#1e293b' }}>Import Instruction:</span>
+                  <span>After downloading, open Tally &rarr; <strong>Import Data</strong> &rarr; <strong>Vouchers</strong> &rarr; select this XML file.</span>
                 </div>
-
-                <div style={{
-                  padding: '3px 9px',
-                  background: '#f1f5f9',
-                  borderRadius: '6px',
-                  border: '1px solid #e2e8f0',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  color: '#64748b'
-                }}>
-                  Active Receipts Only
-                </div>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>Active receipts for selected date only</span>
               </div>
 
               {tallyPreviewError && (
@@ -4717,7 +4688,7 @@ export default function App() {
             </div>
 
             {/* Saved XML Exports List */}
-            <div className="premium-card" style={{ padding: '24px 28px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.06)' }}>
+            <div style={{ backgroundColor: '#ffffff', padding: '20px 24px', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div style={{ fontWeight: 800, fontSize: '1.02rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <FileText size={18} color="#2563eb" />
@@ -4797,10 +4768,30 @@ export default function App() {
                           <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                             <a
                               href={`/api/tally/download/${encodeURIComponent(f.fileName)}`}
-                              download
+                              download={f.fileName}
+                              onClick={async (e) => {
+                                e.preventDefault();
+                                try {
+                                  showNotification(`Downloading ${f.fileName}...`, 'info');
+                                  const res = await fetch(`/api/tally/download/${encodeURIComponent(f.fileName)}`);
+                                  if (!res.ok) throw new Error(`Status ${res.status}`);
+                                  const blob = await res.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement('a');
+                                  link.href = url;
+                                  link.download = f.fileName;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  window.URL.revokeObjectURL(url);
+                                  document.body.removeChild(link);
+                                  showNotification(`Downloaded ${f.fileName}`, 'success');
+                                } catch (err: any) {
+                                  showNotification(`Download error: ${err.message}`, 'error');
+                                }
+                              }}
                               style={{
                                 padding: '5px 12px',
-                                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                                backgroundColor: '#2563eb',
                                 color: '#ffffff',
                                 borderRadius: '6px',
                                 textDecoration: 'none',
@@ -4809,8 +4800,11 @@ export default function App() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '5px',
-                                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)'
+                                cursor: 'pointer',
+                                transition: 'background-color 0.15s ease'
                               }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
                             >
                               <Download size={13} /> Download
                             </a>

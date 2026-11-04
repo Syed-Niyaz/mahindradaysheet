@@ -633,7 +633,102 @@ ${vouchersXml}
       });
     }
 
-    if (pathname === '/api/tally/exports' || pathname === '/api/tally/receipt-backup-list') {
+    // POST /api/tally/save-xml
+    if (pathname === '/api/tally/save-xml' && method === 'POST') {
+      const body = init?.body ? JSON.parse(init.body.toString()) : {};
+      const date = body.date || getTodayIso();
+      const fileName = `TALLY_${date}_BLY.xml`;
+      const tallyList = JSON.parse(localStorage.getItem('bm_demo_tally_exports') || '[]');
+      const newEntry = {
+        fileName,
+        date,
+        size: 4200,
+        modifiedAt: new Date().toISOString()
+      };
+      const filtered = tallyList.filter((f: any) => f.fileName !== fileName);
+      filtered.unshift(newEntry);
+      localStorage.setItem('bm_demo_tally_exports', JSON.stringify(filtered));
+      return jsonResponse({
+        success: true,
+        message: `Tally XML saved: ${fileName}`,
+        fileName,
+        receiptCount: 1
+      });
+    }
+
+    // GET /api/tally/exports
+    if (pathname === '/api/tally/exports') {
+      const tallyList = JSON.parse(localStorage.getItem('bm_demo_tally_exports') || '[]');
+      return jsonResponse({ success: true, files: tallyList });
+    }
+
+    // GET /api/tally/download/:fileName
+    if (pathname.startsWith('/api/tally/download/')) {
+      const fileName = decodeURIComponent(pathname.split('/').pop() || '');
+      const dateMatch = fileName.match(/(\d{4}-\d{2}-\d{2})/);
+      const date = dateMatch ? dateMatch[1] : getTodayIso();
+      const receipts = getStoredReceipts().filter(r => r.receipt_date === date && r.status === 'ACTIVE');
+      const tallyDate = date.replace(/-/g, '');
+      const escape = (s: string) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const vouchersXml = receipts.map(r => {
+        const customer = escape(r.vehicle_no ? `${r.customer_name} ${r.vehicle_no}` : r.customer_name);
+        const isCash = (r.payment_mode || '').toUpperCase() === 'CASH';
+        const voucherType = isCash ? 'Cash' : 'Non Cash';
+        const creditLedger = escape(isCash ? 'Cash Ballari' : (r.payment_mode ? `${r.payment_mode} BM` : 'PhonePe BM'));
+        const amt = (Number(r.amount) || 0).toFixed(2);
+        const displayDate = r.receipt_date.split('-').reverse().join('.');
+        const narration = escape(`Received From and Thanks to ${customer} Received Towards ${r.received_towards_purpose || r.received_towards || 'SERVICE'}${r.received_towards_reference ? `:${r.received_towards_reference}` : ''} Payment Mode :${r.payment_mode || 'Cash'} UTR/NEFT No. ${r.utr_reference || '-'} a Sum of Rupees ${amt} DATED ${displayDate}`);
+        return `        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="${voucherType}" ACTION="Create" OBJVIEW="Accounting Voucher View">
+            <DATE>${tallyDate}</DATE>
+            <EFFECTIVEDATE>${tallyDate}</EFFECTIVEDATE>
+            <VOUCHERTYPENAME>${voucherType}</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>${r.receipt_no}</VOUCHERNUMBER>
+            <NARRATION>${narration}</NARRATION>
+            <PARTYLEDGERNAME>${customer}</PARTYLEDGERNAME>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>${creditLedger}</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-${amt}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>${customer}</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>${amt}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>`;
+      }).join('\n');
+
+      const xml = `<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>All Masters</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>Bellary Motors Sales Pvt Ltd</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+${vouchersXml}
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+
+      return new Response(xml, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/xml; charset=utf-8',
+          'Content-Disposition': `attachment; filename="${fileName || `TALLY_${date}_BLY.xml`}"`
+        }
+      });
+    }
+
+    if (pathname === '/api/tally/receipt-backup-list') {
       return jsonResponse({ success: true, files: [] });
     }
 
