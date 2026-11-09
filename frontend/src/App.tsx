@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { 
   FileText, List, Upload, History, Printer, Download, 
   CheckCircle, AlertTriangle, RefreshCw, Search, ShieldCheck, 
   Building2, Calendar, Edit3, XCircle, Zap, Clock, FileCheck,
   WifiOff, Wifi, AlertCircle, Settings, ChevronDown, Trash2, RotateCcw,
-  ExternalLink, FolderDown, X, Monitor, Shield, Lock, Unlock, Key, PlusCircle,
-  Eye, Table2
+  ExternalLink, FolderDown, X, Monitor, Lock, Unlock, Key, PlusCircle,
+  Eye, Table2, Banknote, CreditCard, Landmark, Calculator
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 interface Branch {
   id: number;
@@ -49,6 +50,57 @@ interface ReceivedTowardsPurpose {
   created_at?: string;
 }
 
+interface ReceiptNumberingItem {
+  receipt_type: 'SERVICE' | 'SALES';
+  prefix: string;
+  padding: number;
+  configured_next_number: number;
+  last_used: number;
+  next_number: number;
+  next_no: string;
+  is_custom: boolean;
+}
+
+// Preview the number that will be used next, using the same rules as the server.
+const previewReceiptNo = (prefix: string, next: string, padding: string): string => {
+  const number = parseInt(next, 10);
+  if (!Number.isFinite(number) || number < 1) return '—';
+  const width = Math.max(0, Math.min(12, parseInt(padding, 10) || 0));
+  return `${prefix}${String(number).padStart(width, '0')}`;
+};
+
+// Small icon + label for Day Sheet section headers / summary rows.
+const SectionIconLabel = ({ icon: Icon, label, color, size = 14 }: { icon: LucideIcon; label: ReactNode; color: string; size?: number }) => (
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+    <Icon size={size} color={color} strokeWidth={2.2} style={{ flexShrink: 0 }} />
+    <span>{label}</span>
+  </span>
+);
+
+const settingsFieldStyle: CSSProperties = {
+  width: '100%',
+  padding: '6px 8px',
+  borderRadius: '6px',
+  border: '1px solid #cbd5e1',
+  backgroundColor: '#ffffff',
+  color: '#0f172a',
+  fontSize: '0.8rem',
+  fontWeight: 700,
+  outline: 'none'
+};
+
+const settingsLabelStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '3px',
+  fontSize: '0.68rem',
+  fontWeight: 800,
+  color: '#475569',
+  textTransform: 'uppercase',
+  letterSpacing: '0.3px'
+};
+
+
 // `received_towards` is stored/printed as "PURPOSE : REFERENCE".
 // The two helpers below keep the separate purpose/reference fields in sync.
 const splitTowards = (value?: string | null): { purpose: string; reference: string } => {
@@ -69,6 +121,16 @@ const composeTowards = (purpose?: string | null, reference?: string | null): str
   return r ? `${p} : ${r}` : p;
 };
 
+// Guard against static hosts (e.g. Netlify SPA fallback) returning index.html
+// instead of a real .xlsx workbook. Downloading that produces a corrupt file.
+const readXlsxBlob = async (res: Response): Promise<Blob> => {
+  const contentType = (res.headers.get('content-type') || '').toLowerCase();
+  if (contentType.includes('text/html')) {
+    throw new Error('The Excel generator is not reachable on this deployment. Please use the local server or redeploy the latest Netlify build.');
+  }
+  return res.blob();
+};
+
 interface Deposit {
   id?: number;
   particulars: string;
@@ -78,6 +140,7 @@ interface Deposit {
 interface Expense {
   id?: number;
   particulars: string;
+  purpose: string;
   amount: number;
 }
 
@@ -183,6 +246,15 @@ export default function App() {
 
   // Settings & Admin Right Sidebar Drawer State
   const [showSettingsSidebar, setShowSettingsSidebar] = useState<boolean>(false);
+
+  // Receipt numbering style (prefix/code + next number) — editable anytime
+  const [receiptNumbering, setReceiptNumbering] = useState<ReceiptNumberingItem[]>([]);
+  const [numberingType, setNumberingType] = useState<'SERVICE' | 'SALES'>('SERVICE');
+  const [numberingPrefix, setNumberingPrefix] = useState<string>('');
+  const [numberingNext, setNumberingNext] = useState<string>('');
+  const [numberingPadding, setNumberingPadding] = useState<string>('0');
+  const [numberingSaving, setNumberingSaving] = useState<boolean>(false);
+  const [numberingMessage, setNumberingMessage] = useState<string>('');
 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<number>(1);
@@ -323,10 +395,14 @@ export default function App() {
 
   // Admin Authentication State (Protects Admin Panel & Archive Management)
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('bellary_admin_logged_in') === 'true';
+    return localStorage.getItem('bellary_admin_logged_in') === 'true'
+      && !!localStorage.getItem('bellary_admin_token');
   });
   const [adminName, setAdminName] = useState<string>(() => {
     return localStorage.getItem('bellary_admin_name') || 'Admin';
+  });
+  const [adminToken, setAdminToken] = useState<string>(() => {
+    return localStorage.getItem('bellary_admin_token') || '';
   });
   const [showAdminLoginModal, setShowAdminLoginModal] = useState<boolean>(false);
   const [adminLoginName, setAdminLoginName] = useState<string>('admin');
@@ -334,6 +410,16 @@ export default function App() {
   const [adminLoginError, setAdminLoginError] = useState<string>('');
   const [adminLoginLoading, setAdminLoginLoading] = useState<boolean>(false);
   const [adminPendingTab, setAdminPendingTab] = useState<'tally' | 'archive' | null>(null);
+
+  // Admin Data Controls (destructive, admin only)
+  const [resetConfirmText, setResetConfirmText] = useState<string>('');
+  const [showDeleteDateModal, setShowDeleteDateModal] = useState<boolean>(false);
+  const [deleteDateValue, setDeleteDateValue] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  const [deleteDateConfirmText, setDeleteDateConfirmText] = useState<string>('');
+  const [deleteDateLoading, setDeleteDateLoading] = useState<boolean>(false);
 
   // Archive Delete Modal State
   const [deleteArchiveFile, setDeleteArchiveFile] = useState<string | null>(null);
@@ -345,20 +431,25 @@ export default function App() {
 
   const handleExportConfirmed = async () => {
     try {
-      showNotification('Generating Day Sheet Excel...', 'info');
+      showNotification('Saving Day Sheet and generating Excel...', 'info');
+      // Persist the on-screen inputs first so bank deposits, expenses,
+      // opening balance and denominations are included in the exported file.
+      await persistDaySheet();
       const res = await fetch(`/api/daysheet/export-excel?branch_id=${selectedBranchId}&date=${selectedDate}&type=${sheetType}`);
       if (!res.ok) throw new Error(`Status ${res.status}`);
-      const blob = await res.blob();
+      const blob = await readXlsxBlob(res);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `WORKSHOP_DAY_SHEET_BLY_${selectedDate}.xlsx`;
+      const sheetTitle = sheetType === 'SALES' ? 'SALES' : 'WORKSHOP';
+      link.download = `${sheetTitle}_DAY_SHEET_BLY_${selectedDate}.xlsx`;
       document.body.appendChild(link);
       link.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
       showNotification(`Day Sheet Excel downloaded for ${selectedDate}`, 'success');
       fetchBackups();
+      fetchDaySheet();
     } catch (err: any) {
       showNotification(`Export failed: ${err.message}`, 'error');
     } finally {
@@ -453,7 +544,7 @@ export default function App() {
       showNotification(`Downloading Day Sheet Excel (${targetDate})...`, 'info');
       const res = await fetch(`/api/backup/download-day-sheet?branch_id=${targetBranch === 'ALL' ? 1 : targetBranch}&date=${targetDate}&type=${sheetType}`);
       if (!res.ok) throw new Error(`Status ${res.status}`);
-      const blob = await res.blob();
+      const blob = await readXlsxBlob(res);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -490,8 +581,10 @@ export default function App() {
         setIsAdminAuthenticated(true);
         const authedUser = data.adminName || adminLoginName.trim();
         setAdminName(authedUser);
+        setAdminToken(data.adminToken || '');
         localStorage.setItem('bellary_admin_logged_in', 'true');
         localStorage.setItem('bellary_admin_name', authedUser);
+        if (data.adminToken) localStorage.setItem('bellary_admin_token', data.adminToken);
         setShowAdminLoginModal(false);
         setAdminLoginPassword('');
         showNotification(`Welcome, ${authedUser}! Admin full access granted.`, 'success');
@@ -513,8 +606,10 @@ export default function App() {
 
   const handleAdminLogout = () => {
     setIsAdminAuthenticated(false);
+    setAdminToken('');
     localStorage.removeItem('bellary_admin_logged_in');
     localStorage.removeItem('bellary_admin_name');
+    localStorage.removeItem('bellary_admin_token');
     showNotification('Admin logged out successfully. Returned to normal employee workspace.', 'info');
     setActiveTab('daysheet');
   };
@@ -549,8 +644,10 @@ export default function App() {
         setIsAdminAuthenticated(true);
         const authed = loginData.adminName || adminLoginName.trim();
         setAdminName(authed);
+        setAdminToken(loginData.adminToken || '');
         localStorage.setItem('bellary_admin_logged_in', 'true');
         localStorage.setItem('bellary_admin_name', authed);
+        if (loginData.adminToken) localStorage.setItem('bellary_admin_token', loginData.adminToken);
       } catch (err: any) {
         setAdminLoginError(err.message || 'Error verifying admin credentials.');
         setDeleteArchiveLoading(false);
@@ -579,6 +676,27 @@ export default function App() {
       setDeleteArchiveLoading(false);
     }
   };
+
+  // Verify a stored admin token is still valid (e.g. after a server restart)
+  useEffect(() => {
+    if (!isAdminAuthenticated || !adminToken) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/backup/admin-session', {
+          headers: { 'x-admin-token': adminToken }
+        });
+        if (!res.ok && !cancelled) {
+          setIsAdminAuthenticated(false);
+          setAdminToken('');
+          localStorage.removeItem('bellary_admin_logged_in');
+          localStorage.removeItem('bellary_admin_name');
+          localStorage.removeItem('bellary_admin_token');
+        }
+      } catch (_) { /* offline/demo: keep the current session */ }
+    })();
+    return () => { cancelled = true; };
+  }, [isAdminAuthenticated, adminToken]);
 
   // Fetch branches on mount
   useEffect(() => {
@@ -650,6 +768,83 @@ export default function App() {
       // ignore — dropdown still shows legacy values from receipts
     }
   };
+
+  const fetchReceiptNumbering = async (branchId: number) => {
+    try {
+      const res = await fetch(`/api/receipts/numbering?branch_id=${branchId}`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.numbering)) {
+        setReceiptNumbering(data.numbering);
+      }
+    } catch (e) {
+      // ignore — panel keeps its last values
+    }
+  };
+
+  const handleSaveReceiptNumbering = async () => {
+    const nextNumber = parseInt(numberingNext, 10);
+    if (!Number.isFinite(nextNumber) || nextNumber < 1) {
+      setNumberingMessage('Enter a valid next number (1 or more).');
+      return;
+    }
+    const padding = parseInt(numberingPadding, 10);
+    if (!Number.isFinite(padding) || padding < 0 || padding > 12) {
+      setNumberingMessage('Digits must be between 0 and 12.');
+      return;
+    }
+
+    setNumberingSaving(true);
+    setNumberingMessage('');
+    try {
+      const res = await fetch('/api/receipts/numbering', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          branch_id: selectedBranchId,
+          receipt_type: numberingType,
+          prefix: numberingPrefix,
+          next_number: nextNumber,
+          padding
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Could not save receipt numbering.');
+
+      if (Array.isArray(data.numbering)) {
+        setReceiptNumbering(data.numbering);
+      } else if (data.item) {
+        setReceiptNumbering(prev => {
+          const rest = prev.filter(i => i.receipt_type !== data.item.receipt_type);
+          return [...rest, data.item as ReceiptNumberingItem]
+            .sort((a, b) => a.receipt_type.localeCompare(b.receipt_type));
+        });
+      }
+      setNumberingMessage(`Saved. Next ${numberingType} receipt: ${data.item?.next_no || previewReceiptNo(numberingPrefix, numberingNext, numberingPadding)}`);
+      showNotification(`Receipt numbering saved for ${numberingType}`, 'success');
+    } catch (err: any) {
+      setNumberingMessage(err.message || 'Could not save receipt numbering.');
+    } finally {
+      setNumberingSaving(false);
+    }
+  };
+
+  // Load the saved numbering style whenever the Settings drawer opens.
+  useEffect(() => {
+    if (showSettingsSidebar && selectedBranchId) {
+      fetchReceiptNumbering(selectedBranchId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSettingsSidebar, selectedBranchId]);
+
+  // Keep the three inputs in sync with the selected receipt type.
+  useEffect(() => {
+    const item = receiptNumbering.find(i => i.receipt_type === numberingType);
+    if (!item) return;
+    setNumberingPrefix(item.prefix);
+    setNumberingNext(String(item.next_number));
+    setNumberingPadding(String(item.padding));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numberingType, receiptNumbering]);
 
   const handleAddPurpose = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -987,7 +1182,11 @@ export default function App() {
     dated?: string;
     drawnOn?: string;
   }, isPrintOnly = false) => {
-    const formattedDate = data.date ? data.date.split('-').reverse().join('-') : '—';
+    // Receipt date is printed as DD-MM-YY (e.g. 06-11-26).
+    const dateParts = data.date ? data.date.split('-') : [];
+    const formattedDate = dateParts.length === 3
+      ? `${dateParts[2].padStart(2, '0')}-${dateParts[1].padStart(2, '0')}-${dateParts[0].slice(-2)}`
+      : (data.date || '—');
     const receiptDateText = data.dated !== undefined ? data.dated : formattedDate;
     const drawnOnText = data.drawnOn || '';
     const numAmount = typeof data.amount === 'string' ? parseFloat(data.amount) || 0 : data.amount || 0;
@@ -1010,22 +1209,6 @@ export default function App() {
           position: 'relative'
         }}
       >
-        {/* Optional Copy Indicator (e.g. Original / Customer / Accounts Copy) */}
-        {data.copyLabel && (
-          <div style={{
-            position: 'absolute',
-            top: '2px',
-            right: '8px',
-            fontSize: '9px',
-            fontWeight: 800,
-            color: '#64748b',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            {data.copyLabel}
-          </div>
-        )}
-
         {/* ── HEADER: LOGO | COMPANY | PILL RECEIPT NO ── */}
         <div style={{
           display: 'flex',
@@ -1066,7 +1249,7 @@ export default function App() {
               color: '#000000',
               lineHeight: '1.15'
             }}>
-              BELLARY MOTORS SALES PVT LTD.,
+              BELLARY MOTOR SALES PVT LTD.,
             </div>
             <div style={{
               fontSize: isPrintOnly ? '10px' : '12.5px',
@@ -1119,7 +1302,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* ── SUB-HEADER: BRANCH & DATE WITH CALENDAR ICON ── */}
+        {/* ── SUB-HEADER: H.O, COPY LABEL & DATE WITH CALENDAR ICON ── */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -1129,9 +1312,22 @@ export default function App() {
           backgroundColor: '#ffffff'
         }}>
           <div style={{ fontSize: isPrintOnly ? '11px' : '14px', color: '#000000' }}>
-            <span style={{ fontWeight: 600 }}>Branch :</span>&nbsp;&nbsp;
+            <span style={{ fontWeight: 600 }}>H.O :</span>&nbsp;&nbsp;
             <span style={{ fontWeight: 900 }}>{data.branchName || 'BALLARI'}</span>
           </div>
+          {data.copyLabel && (
+            <div style={{
+              flex: 1,
+              textAlign: 'center',
+              fontSize: isPrintOnly ? '11px' : '13px',
+              fontWeight: 900,
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
+              color: '#000000'
+            }}>
+              {data.copyLabel}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: isPrintOnly ? '11px' : '14px' }}>
             <svg width={isPrintOnly ? "14" : "18"} height={isPrintOnly ? "14" : "18"} viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -1411,7 +1607,7 @@ export default function App() {
               textAlign: 'center',
               lineHeight: 1.2
             }}>
-              for Bellary Motors Sales Pvt Ltd.,
+              for Bellary Motor Sales Pvt Ltd.,
             </div>
             {/* Blank space for the cashier's signature */}
             <div style={{ flex: 1, minHeight: isPrintOnly ? '28px' : '46px' }} />
@@ -1459,9 +1655,9 @@ export default function App() {
     return (
       <div id={containerId} className="receipt-print-sheet" style={{ display: 'none' }}>
         <div className="receipt-print-stack" style={{ display: 'flex', flexDirection: 'column', gap: '2mm', height: '100%', width: '100%' }}>
-          {renderSingleReceiptCard(data, true)}
-          {renderSingleReceiptCard(data, true)}
-          {renderSingleReceiptCard(data, true)}
+          {renderSingleReceiptCard({ ...data, copyLabel: 'ORIGINAL' }, true)}
+          {renderSingleReceiptCard({ ...data, copyLabel: 'DUPLICATE' }, true)}
+          {renderSingleReceiptCard({ ...data, copyLabel: 'TRIPLICATE' }, true)}
         </div>
       </div>
     );
@@ -1614,10 +1810,12 @@ export default function App() {
     setDeposits(updated);
   };
 
-  const handleExpenseChange = (index: number, field: 'particulars' | 'amount', value: any) => {
+  const handleExpenseChange = (index: number, field: 'particulars' | 'purpose' | 'amount', value: any) => {
     const updated = [...expenses];
     if (field === 'amount') {
       updated[index].amount = parseFloat(value) || 0;
+    } else if (field === 'purpose') {
+      updated[index].purpose = value;
     } else {
       updated[index].particulars = value;
     }
@@ -1625,7 +1823,7 @@ export default function App() {
   };
 
   const addExpenseRow = () => {
-    setExpenses([...expenses, { particulars: '', amount: 0 }]);
+    setExpenses([...expenses, { particulars: '', purpose: '', amount: 0 }]);
   };
 
   const removeExpenseRow = (index: number) => {
@@ -1633,36 +1831,42 @@ export default function App() {
     setExpenses(updated);
   };
 
+  // Save current Day Sheet inputs (opening balance, deposits, expenses, denominations)
+  // to the database. Used by the explicit save action and before Excel export so
+  // the exported file always matches what is on screen.
+  const persistDaySheet = async () => {
+    if (!daySheet) return false;
+    const res = await fetch('/api/daysheet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        day_sheet_id: daySheet.id,
+        branch_id: selectedBranchId,
+        sheet_date: selectedDate,
+        sheet_type: sheetType,
+        opening_balance: daySheet.opening_balance,
+        cash_sales: daySheet.cash_sales,
+        less_vouchers: daySheet.less_vouchers,
+        status: daySheet.status,
+        notes: daySheet.notes,
+        deposits,
+        expenses,
+        denominations
+      })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || 'Failed to save Day Sheet');
+    return true;
+  };
+
   // Save Day Sheet parameters
   const handleSaveDaySheet = async () => {
     if (!daySheet) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/daysheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          day_sheet_id: daySheet.id,
-          branch_id: selectedBranchId,
-          sheet_date: selectedDate,
-          sheet_type: sheetType,
-          opening_balance: daySheet.opening_balance,
-          cash_sales: daySheet.cash_sales,
-          less_vouchers: daySheet.less_vouchers,
-          status: daySheet.status,
-          notes: daySheet.notes,
-          deposits,
-          expenses,
-          denominations
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        showNotification('Day Sheet saved successfully with updated parameters', 'success');
-        fetchDaySheet();
-      } else {
-        showNotification(data.error || 'Failed to save Day Sheet', 'error');
-      }
+      await persistDaySheet();
+      showNotification('Day Sheet saved successfully with updated parameters', 'success');
+      fetchDaySheet();
     } catch (err: any) {
       showNotification(err.message, 'error');
     } finally {
@@ -1756,24 +1960,66 @@ export default function App() {
     }
   };
 
-  // Reset Entire System to Factory Scratch
+  // Shared handling for expired/missing server-side admin session.
+  const handleAdminAuthFailure = (message?: string) => {
+    setIsAdminAuthenticated(false);
+    setAdminToken('');
+    localStorage.removeItem('bellary_admin_logged_in');
+    localStorage.removeItem('bellary_admin_name');
+    localStorage.removeItem('bellary_admin_token');
+    showNotification(
+      message || 'Admin session expired. Please log in as Admin again to continue.',
+      'error'
+    );
+  };
+
+  const refreshAfterDestructiveChange = () => {
+    fetchReceipts();
+    fetchDaySheet();
+    fetchSyncStatus();
+    fetchBackups();
+    fetchBackupAvailableDates();
+    fetchAvailableDates();
+    fetchAuditLogs();
+    fetchTallyExports();
+    fetchReceiptBackups();
+  };
+
+  // Admin: Reset Entire System (wipes all operational data + generated files)
   const handleResetSystem = async () => {
+    if (!isAdminAuthenticated || !adminToken) {
+      handleAdminAuthFailure('Only an authenticated Admin can reset the system.');
+      return;
+    }
+    if (resetConfirmText.trim().toUpperCase() !== 'RESET') {
+      showNotification('Type RESET in the confirmation box to continue.', 'error');
+      return;
+    }
+
     setResetSystemLoading(true);
     try {
       const res = await fetch('/api/backup/reset-system', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': adminToken
+        },
+        body: JSON.stringify({ confirm: 'RESET' })
       });
       const data = await res.json();
+
+      if (res.status === 401) {
+        handleAdminAuthFailure(data.error);
+        return;
+      }
+
       if (data.success) {
-        showNotification(data.message || 'System completely reset to scratch!', 'success');
+        showNotification(data.message || 'Entire system reset. You can start from scratch.', 'success');
         setShowResetSystemModal(false);
+        setResetConfirmText('');
         setPathInput('');
         setPathSaveMsg(null);
-        fetchReceipts();
-        fetchDaySheet();
-        fetchSyncStatus();
-        fetchBackups();
+        refreshAfterDestructiveChange();
       } else {
         showNotification(data.error || 'Reset failed', 'error');
       }
@@ -1781,6 +2027,53 @@ export default function App() {
       showNotification(err.message, 'error');
     } finally {
       setResetSystemLoading(false);
+    }
+  };
+
+  // Admin: Delete all data for one specific date
+  const handleDeleteDate = async () => {
+    if (!isAdminAuthenticated || !adminToken) {
+      handleAdminAuthFailure('Only an authenticated Admin can delete data.');
+      return;
+    }
+    if (!deleteDateValue) {
+      showNotification('Please select a date to delete.', 'error');
+      return;
+    }
+    if (deleteDateConfirmText.trim().toUpperCase() !== 'DELETE') {
+      showNotification('Type DELETE in the confirmation box to continue.', 'error');
+      return;
+    }
+
+    setDeleteDateLoading(true);
+    try {
+      const res = await fetch('/api/backup/delete-date', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': adminToken
+        },
+        body: JSON.stringify({ date: deleteDateValue, confirm: 'DELETE' })
+      });
+      const data = await res.json();
+
+      if (res.status === 401) {
+        handleAdminAuthFailure(data.error);
+        return;
+      }
+
+      if (data.success) {
+        showNotification(data.message || `Data for ${deleteDateValue} deleted.`, 'success');
+        setShowDeleteDateModal(false);
+        setDeleteDateConfirmText('');
+        refreshAfterDestructiveChange();
+      } else {
+        showNotification(data.error || 'Delete failed', 'error');
+      }
+    } catch (err: any) {
+      showNotification(err.message, 'error');
+    } finally {
+      setDeleteDateLoading(false);
     }
   };
 
@@ -1973,7 +2266,7 @@ export default function App() {
                   color: '#0f172a',
                   textTransform: 'uppercase'
                 }}>
-                  BELLARY MOTORS
+                  BELLARY MOTOR
                 </h1>
                 <span style={{
                   fontSize: '0.72rem',
@@ -2056,30 +2349,32 @@ export default function App() {
             gap: '6px',
             flexWrap: 'wrap'
           }}>
-            {/* Branch Selector */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              background: '#ffffff',
-              padding: '5px 12px',
-              borderRadius: '8px',
-              border: '1px solid #e2e8f0',
-              backdropFilter: 'none',
-              flexShrink: 0
-            }}>
-              <Building2 size={14} color="#2563eb" />
-              <label style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, letterSpacing: '0.3px' }}>Branch:</label>
-              <select 
-                value={selectedBranchId}
-                onChange={(e) => setSelectedBranchId(Number(e.target.value))}
-                style={{ background: 'transparent', color: '#0f172a', border: 'none', fontWeight: 700, outline: 'none', cursor: 'pointer', fontSize: '0.8rem' }}
-              >
-                {branches.map(b => (
-                  <option key={b.id} value={b.id} style={{ background: '#ffffff', color: '#0f172a' }}>
-                    {b.name} {b.is_head_office ? '(H.O)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Branch Selector — hidden when there is only the single H.O branch */}
+            {branches.length > 1 && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: '#ffffff',
+                padding: '5px 12px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                backdropFilter: 'none',
+                flexShrink: 0
+              }}>
+                <Building2 size={14} color="#2563eb" />
+                <label style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, letterSpacing: '0.3px' }}>Branch:</label>
+                <select 
+                  value={selectedBranchId}
+                  onChange={(e) => setSelectedBranchId(Number(e.target.value))}
+                  style={{ background: 'transparent', color: '#0f172a', border: 'none', fontWeight: 700, outline: 'none', cursor: 'pointer', fontSize: '0.8rem' }}
+                >
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id} style={{ background: '#ffffff', color: '#0f172a' }}>
+                      {b.name} {b.is_head_office ? '(H.O)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Date Selector */}
             <div style={{
@@ -2415,7 +2710,7 @@ export default function App() {
                     position: 'relative'
                   }}
                 >
-                  <Icon size={14} color={isActive ? '#ffffff' : (isArchive ? '#059669' : '#475569')} />
+                  <Icon size={14} color={isActive ? '#ffffff' : (isArchive ? '#6ee7b7' : '#94a3b8')} />
                   <span>{tab.label}</span>
                   {isArchive && excelBackupsList.length > 0 && (
                     <span style={{
@@ -2446,7 +2741,7 @@ export default function App() {
           {/* If Admin is logged in, show prominent Logout button in header nav bar */}
           {isAdminAuthenticated && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.74rem', color: '#15803d', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.74rem', color: '#6ee7b7', fontWeight: 700 }}>
                 ● Admin Active: {adminName}
               </span>
               <button
@@ -2500,7 +2795,7 @@ export default function App() {
                   {sheetType === 'SERVICE' ? 'CASH SHEET — WORKSHOP' : 'CASH SHEET — SALES'}
                 </div>
                 <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '1px' }}>
-                  Branch: <strong style={{ color: '#0f172a' }}>{currentBranch?.name}</strong> | Date: <strong style={{ color: '#0f172a' }}>{selectedDate}</strong>
+                  Date: <strong style={{ color: '#0f172a' }}>{selectedDate}</strong>
                 </div>
               </div>
 
@@ -2568,28 +2863,6 @@ export default function App() {
                   <span>Export Excel</span>
                 </button>
 
-                <button
-                  id="export-tally-xml-btn"
-                  onClick={() => { setTallyExportDate(selectedDate); handleExportTallyXml(); }}
-                  style={{
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '6px 13px',
-                    borderRadius: '6px',
-                    fontWeight: 700,
-                    fontSize: '0.78rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 8px rgba(124, 58, 237, 0.25)'
-                  }}
-                >
-                  <Zap size={14} />
-                  <span>Export Tally XML</span>
-                </button>
-
               </div>
             </div>
 
@@ -2646,7 +2919,7 @@ export default function App() {
             }}>
               <div className="kpi-card" style={{ ['--kpi-accent' as any]: '#10b981' }}>
                 <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Cash Receipts Today
+                  <SectionIconLabel icon={Banknote} color="#059669" size={13} label="Cash Receipts Today" />
                 </div>
                 <div className="num-mono" style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
                   ₹{cashRecsTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -2658,7 +2931,7 @@ export default function App() {
 
               <div className="kpi-card" style={{ ['--kpi-accent' as any]: '#6366f1' }}>
                 <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Digital / Cheque Receipts (Bank)
+                  <SectionIconLabel icon={CreditCard} color="#2563eb" size={13} label="Digital / Cheque Receipts (Bank)" />
                 </div>
                 <div className="num-mono" style={{ fontSize: '1.2rem', fontWeight: 800, color: '#4338ca', marginTop: '2px' }}>
                   ₹{nonCashRecsTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -2670,7 +2943,7 @@ export default function App() {
 
               <div className="kpi-card" style={{ ['--kpi-accent' as any]: '#f59e0b' }}>
                 <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Bank Deposits (Cash-to-Bank)
+                  <SectionIconLabel icon={Landmark} color="#d97706" size={13} label="Bank Deposits (Cash-to-Bank)" />
                 </div>
                 <div className="num-mono" style={{ fontSize: '1.2rem', fontWeight: 800, color: '#b45309', marginTop: '2px' }}>
                   ₹{currentTotalDeposits.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -2682,7 +2955,7 @@ export default function App() {
 
               <div className="kpi-card" style={{ ['--kpi-accent' as any]: isReconciled ? '#10b981' : '#ef4444' }}>
                 <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Physical Cash Counted
+                  <SectionIconLabel icon={Calculator} color={isReconciled ? '#059669' : '#dc2626'} size={13} label="Physical Cash Counted" />
                 </div>
                 <div className="num-mono" style={{ fontSize: '1.2rem', fontWeight: 800, color: isReconciled ? '#059669' : '#dc2626', marginTop: '2px' }}>
                   ₹{currentTotalDenom.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -2706,11 +2979,11 @@ export default function App() {
               <div className="day-sheet-print-header">
                 <img
                   src="/Bellary Motor Sales Logo.png"
-                  alt="Bellary Motors Sales"
+                  alt="Bellary Motor Sales"
                   className="day-sheet-print-logo-left"
                 />
                 <div className="day-sheet-print-company">
-                  <div className="day-sheet-print-company-name">BELLARY MOTORS SALES PVT LTD.</div>
+                  <div className="day-sheet-print-company-name">BELLARY MOTOR SALES PVT LTD.</div>
                   <div className="day-sheet-print-company-details">
                     H.O : BALLARI&nbsp;&nbsp;|&nbsp;&nbsp;GSTIN : 29AACCB6242J1ZK&nbsp;&nbsp;|&nbsp;&nbsp;Authorised Mahindra Dealer
                   </div>
@@ -2728,7 +3001,7 @@ export default function App() {
                   {sheetType === 'SERVICE' ? 'CASH SHEET- WORKSHOP' : 'CASH SHEET- SALES'}
                 </h2>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.8rem', fontWeight: 700 }}>
-                  <span>BRANCH: {currentBranch?.name}</span>
+                  <span>H.O: {currentBranch?.name}</span>
                   <span>DATE: {selectedDate}</span>
                 </div>
               </div>
@@ -3003,15 +3276,16 @@ export default function App() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', border: '1px solid #0f172a' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#e2e8f0', textAlign: 'left' }}>
-                          <th style={{ padding: '4px 6px', border: '1px solid #0f172a', width: '60%', fontSize: '0.74rem' }}>EXPENSE PARTICULARS</th>
-                          <th style={{ padding: '4px 6px', border: '1px solid #0f172a', textAlign: 'right', width: '35%', fontSize: '0.74rem' }}>AMOUNT</th>
+                          <th style={{ padding: '4px 6px', border: '1px solid #0f172a', width: '45%', fontSize: '0.74rem' }}>EXPENSE PARTICULARS</th>
+                          <th style={{ padding: '4px 6px', border: '1px solid #0f172a', width: '25%', fontSize: '0.74rem' }}>PURPOSE</th>
+                          <th style={{ padding: '4px 6px', border: '1px solid #0f172a', textAlign: 'right', width: '25%', fontSize: '0.74rem' }}>AMOUNT</th>
                           <th className="no-print" style={{ width: '5%', border: '1px solid #0f172a' }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {expenses.length === 0 ? (
                           <tr>
-                            <td colSpan={2} style={{ padding: '5px 6px', border: '1px solid #0f172a', color: '#64748b', fontSize: '0.75rem', fontStyle: 'italic' }}>
+                            <td colSpan={3} style={{ padding: '5px 6px', border: '1px solid #0f172a', color: '#64748b', fontSize: '0.75rem', fontStyle: 'italic' }}>
                               No expenses recorded for this date
                             </td>
                             <td className="no-print" style={{ border: '1px solid #0f172a' }}></td>
@@ -3025,6 +3299,15 @@ export default function App() {
                                   value={exp.particulars}
                                   placeholder="Expense details"
                                   onChange={(e) => handleExpenseChange(idx, 'particulars', e.target.value)}
+                                  style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.78rem', padding: '1px 2px' }}
+                                />
+                              </td>
+                              <td style={{ padding: '2px 5px', border: '1px solid #0f172a' }}>
+                                <input
+                                  type="text"
+                                  value={exp.purpose || ''}
+                                  placeholder="Purpose"
+                                  onChange={(e) => handleExpenseChange(idx, 'purpose', e.target.value)}
                                   style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.78rem', padding: '1px 2px' }}
                                 />
                               </td>
@@ -3051,7 +3334,7 @@ export default function App() {
                         )}
                         {/* TOTAL EXPENSES */}
                         <tr style={{ backgroundColor: '#f8fafc', fontWeight: 800 }}>
-                          <td style={{ padding: '4px 6px', border: '1px solid #0f172a', textAlign: 'right', fontSize: '0.76rem' }}>TOTAL</td>
+                          <td colSpan={2} style={{ padding: '4px 6px', border: '1px solid #0f172a', textAlign: 'right', fontSize: '0.76rem' }}>TOTAL</td>
                           <td style={{ padding: '4px 6px', border: '1px solid #0f172a', textAlign: 'right', fontSize: '0.8rem', color: '#b91c1c' }}>
                             {currentTotalExpenses.toFixed(2)}
                           </td>
@@ -3456,7 +3739,7 @@ export default function App() {
                     color: '#000000',
                     lineHeight: '1.2'
                   }}>
-                    BELLARY MOTORS SALES PVT LTD.,
+                    BELLARY MOTOR SALES PVT LTD.,
                   </div>
                   <div style={{
                     fontSize: '13px',
@@ -3527,7 +3810,7 @@ export default function App() {
                 backgroundColor: '#ffffff'
               }}>
                 <div style={{ fontSize: '15px', color: '#000000' }}>
-                  <span style={{ fontWeight: 600 }}>Branch :</span>&nbsp;&nbsp;
+                  <span style={{ fontWeight: 600 }}>H.O :</span>&nbsp;&nbsp;
                   <span style={{ fontWeight: 900, fontSize: '16px' }}>BALLARI</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px' }}>
@@ -3950,7 +4233,7 @@ export default function App() {
                     textAlign: 'center',
                     lineHeight: 1.2
                   }}>
-                    for Bellary Motors Sales Pvt Ltd.,
+                    for Bellary Motor Sales Pvt Ltd.,
                   </div>
                   {/* Blank space for the cashier's signature */}
                   <div style={{ flex: 1, minHeight: '60px' }} />
@@ -4606,14 +4889,9 @@ export default function App() {
                             <td style={tallySheetCellStyle}>{row['Date']}</td>
                             <td style={tallySheetCellStyle}>
                               <span style={{
-                                display: 'inline-block',
-                                padding: '2px 8px',
-                                borderRadius: '999px',
-                                fontSize: '0.7rem',
-                                fontWeight: 800,
-                                backgroundColor: row['Voucher Type'] === 'Cash' ? '#dcfce7' : '#dbeafe',
-                                color: row['Voucher Type'] === 'Cash' ? '#166534' : '#1e40af',
-                                border: row['Voucher Type'] === 'Cash' ? '1px solid #bbf7d0' : '1px solid #bfdbfe'
+                                fontWeight: 700,
+                                whiteSpace: 'nowrap',
+                                color: row['Voucher Type'] === 'Receipt' ? '#166534' : '#1e40af'
                               }}>
                                 {row['Voucher Type']}
                               </span>
@@ -5771,29 +6049,56 @@ export default function App() {
                   Reset System to Scratch
                 </h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '3px' }}>
-                  Complete factory reset of all data, paths, and settings
+                  Admin only · permanently wipes all records and generated files
                 </div>
               </div>
             </div>
 
             <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '14px', marginBottom: '18px', fontSize: '0.83rem', color: '#991b1b', lineHeight: 1.5 }}>
-              <div style={{ fontWeight: 700, marginBottom: '6px' }}>🚨 What will be cleared:</div>
+              <div style={{ fontWeight: 700, marginBottom: '6px' }}>🚨 What will be permanently deleted:</div>
               <ul style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <li>All <strong>Receipts</strong> (Service and Sales)</li>
-                <li>All <strong>Day Sheets, Denominations & Deposits</strong></li>
+                <li>All <strong>Day Sheets, Expenses, Denominations & Deposits</strong></li>
+                <li>All <strong>Generated Excel archives, Receipt backups & Tally files</strong></li>
                 <li>All <strong>Sync History & Audit Logs</strong></li>
-                <li>Connected <strong>Excel Backup File Paths</strong> completely removed (vanished)</li>
               </ul>
+              <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#7f1d1d' }}>
+                Branch master, Received Towards list and admin login are kept so the app is ready to use immediately.
+              </div>
             </div>
 
-            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 14px', marginBottom: '22px', fontSize: '0.8rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 14px', marginBottom: '18px', fontSize: '0.8rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShieldCheck size={18} color="#16a34a" style={{ flexShrink: 0 }} />
               <span>A safety snapshot backup will be created automatically in <code>data/backups/</code> before clearing.</span>
             </div>
 
+            <div style={{ marginBottom: '22px' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+                Type <span style={{ color: '#dc2626' }}>RESET</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={resetConfirmText}
+                onChange={(e) => setResetConfirmText(e.target.value)}
+                placeholder="RESET"
+                autoComplete="off"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '10px 12px',
+                  borderRadius: '7px',
+                  border: '2px solid #fca5a5',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  letterSpacing: '1px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
-                onClick={() => setShowResetSystemModal(false)}
+                onClick={() => { setShowResetSystemModal(false); setResetConfirmText(''); }}
                 disabled={resetSystemLoading}
                 style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
               >
@@ -5802,18 +6107,133 @@ export default function App() {
               <button
                 id="confirm-reset-system-btn"
                 onClick={handleResetSystem}
-                disabled={resetSystemLoading}
+                disabled={resetSystemLoading || resetConfirmText.trim().toUpperCase() !== 'RESET'}
                 style={{
                   padding: '10px 22px', borderRadius: '8px', border: 'none',
-                  background: resetSystemLoading ? '#e2e8f0' : '#dc2626',
-                  color: resetSystemLoading ? '#94a3b8' : '#fff',
+                  background: (resetSystemLoading || resetConfirmText.trim().toUpperCase() !== 'RESET') ? '#e2e8f0' : '#dc2626',
+                  color: (resetSystemLoading || resetConfirmText.trim().toUpperCase() !== 'RESET') ? '#94a3b8' : '#fff',
                   fontWeight: 800, fontSize: '0.88rem',
-                  cursor: resetSystemLoading ? 'not-allowed' : 'pointer',
+                  cursor: (resetSystemLoading || resetConfirmText.trim().toUpperCase() !== 'RESET') ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', gap: '7px',
                 }}
               >
                 <RotateCcw size={16} className={resetSystemLoading ? 'spin' : ''} />
-                {resetSystemLoading ? 'Resetting Everything...' : 'Yes, Reset to Scratch'}
+                {resetSystemLoading ? 'Resetting Everything...' : 'Yes, Reset Entire System'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN DATE-WISE DELETE MODAL */}
+      {showDeleteDateModal && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.75)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10002,
+        }}>
+          <div style={{
+            backgroundColor: '#fff', borderRadius: '14px', padding: '30px',
+            width: '500px', maxWidth: '95vw',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+            border: '3px solid #ea580c',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+              <div style={{ backgroundColor: '#ffedd5', borderRadius: '50%', width: '54px', height: '54px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Calendar size={28} color="#ea580c" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#9a3412', margin: 0 }}>
+                  Delete Data for a Date
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '3px' }}>
+                  Admin only · permanently deletes every record for the selected date
+                </div>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '8px', padding: '14px', marginBottom: '18px', fontSize: '0.83rem', color: '#9a3412', lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 700, marginBottom: '6px' }}>🚨 For the selected date, this will delete:</div>
+              <ul style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <li>All <strong>Receipts</strong> dated on that day</li>
+                <li>All <strong>Day Sheets</strong> with expenses, denominations and deposits</li>
+                <li>That date's <strong>Excel archive, Receipt backup and Tally XML</strong></li>
+              </ul>
+              <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#7c2d12' }}>
+                Other dates are untouched. The deletion is recorded in the Audit Trail.
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+                Select the date to delete
+              </label>
+              <input
+                type="date"
+                value={deleteDateValue}
+                onChange={(e) => setDeleteDateValue(e.target.value)}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '10px 12px',
+                  borderRadius: '7px',
+                  border: '2px solid #fdba74',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '22px' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#374151', marginBottom: '6px' }}>
+                Type <span style={{ color: '#ea580c' }}>DELETE</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteDateConfirmText}
+                onChange={(e) => setDeleteDateConfirmText(e.target.value)}
+                placeholder="DELETE"
+                autoComplete="off"
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '10px 12px',
+                  borderRadius: '7px',
+                  border: '2px solid #fdba74',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  letterSpacing: '1px',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                onClick={() => { setShowDeleteDateModal(false); setDeleteDateConfirmText(''); }}
+                disabled={deleteDateLoading}
+                style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                id="confirm-delete-date-btn"
+                onClick={handleDeleteDate}
+                disabled={deleteDateLoading || deleteDateConfirmText.trim().toUpperCase() !== 'DELETE' || !deleteDateValue}
+                style={{
+                  padding: '10px 22px', borderRadius: '8px', border: 'none',
+                  background: (deleteDateLoading || deleteDateConfirmText.trim().toUpperCase() !== 'DELETE' || !deleteDateValue) ? '#e2e8f0' : '#ea580c',
+                  color: (deleteDateLoading || deleteDateConfirmText.trim().toUpperCase() !== 'DELETE' || !deleteDateValue) ? '#94a3b8' : '#fff',
+                  fontWeight: 800, fontSize: '0.88rem',
+                  cursor: (deleteDateLoading || deleteDateConfirmText.trim().toUpperCase() !== 'DELETE' || !deleteDateValue) ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '7px',
+                }}
+              >
+                <Trash2 size={16} />
+                {deleteDateLoading ? 'Deleting...' : `Delete All Data for ${deleteDateValue || 'Date'}`}
               </button>
             </div>
           </div>
@@ -6365,7 +6785,7 @@ export default function App() {
                     Admin Authentication
                   </h3>
                   <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '1px' }}>
-                    Restricted Area • Bellary Motors Management
+                    Restricted Area • Bellary Motor Management
                   </div>
                 </div>
               </div>
@@ -6811,7 +7231,7 @@ export default function App() {
             </div>
 
             {/* Simple Menu Buttons */}
-            <div style={{ padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
+            <div style={{ padding: '18px 16px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, overflowY: 'auto' }}>
               
               {/* 1. Screen View Scale Buttons (85, 90, 100) */}
               <div>
@@ -6850,117 +7270,152 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Day Sheet Excel Archive */}
-              <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  Archive Repository
-                </div>
-                <button
-                  type="button"
-                  id="settings-open-archive-page-btn"
-                  onClick={() => {
-                    setActiveTab('archive');
-                    setShowSettingsSidebar(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '7px',
-                    border: '1px solid #a7f3d0',
-                    backgroundColor: '#f0fdf4',
-                    color: '#065f46',
-                    fontWeight: 800,
-                    fontSize: '0.84rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <FileCheck size={16} color="#059669" />
-                  <span>📂 Day Sheet Excel Archive</span>
-                </button>
-              </div>
-
-              {/* Reset / Clear Test Data (For Client Testing From Scratch) */}
-              <div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#e11d48', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  Testing & Demo Reset
-                </div>
-                <button
-                  type="button"
-                  id="settings-reset-all-test-data-btn"
-                  onClick={() => {
-                    if (window.confirm('Clear all test data? All receipts and day sheets in browser storage will be reset to 0 so you can test fresh from scratch.')) {
-                      if (typeof (window as any).clearAllClientTestData === 'function') {
-                        (window as any).clearAllClientTestData();
-                      } else {
-                        localStorage.clear();
-                        window.location.reload();
-                      }
-                    }
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '7px',
-                    border: '1px solid #fecdd3',
-                    backgroundColor: '#fff1f2',
-                    color: '#be123c',
-                    fontWeight: 800,
-                    fontSize: '0.84rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#ffe4e6';
-                    e.currentTarget.style.borderColor = '#fda4af';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#fff1f2';
-                    e.currentTarget.style.borderColor = '#fecdd3';
-                  }}
-                >
-                  <Trash2 size={16} color="#e11d48" />
-                  <span>Clear Test Data (Start from Scratch)</span>
-                </button>
-              </div>
-
-              {/* Auto-Sync Settings */}
+              {/* Receipt Numbering Style — change the code/prefix and next number anytime */}
               <div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  Automation Engine
+                  Receipt Numbering
                 </div>
-                <button
-                  type="button"
-                  id="settings-open-sync-page-btn"
-                  onClick={() => {
-                    setActiveTab('tally');
-                    setShowSettingsSidebar(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '7px',
-                    border: '1px solid #cbd5e1',
-                    backgroundColor: '#f8fafc',
-                    color: '#0f172a',
-                    fontWeight: 800,
-                    fontSize: '0.84rem',
-                    cursor: 'pointer',
+                <div style={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  backgroundColor: '#f8fafc',
+                  padding: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                    {(['SERVICE', 'SALES'] as const).map(t => {
+                      const isSelected = numberingType === t;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          id={`receipt-numbering-type-${t.toLowerCase()}`}
+                          onClick={() => {
+                            setNumberingType(t);
+                            setNumberingMessage('');
+                          }}
+                          style={{
+                            padding: '7px 0',
+                            borderRadius: '6px',
+                            border: isSelected ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                            backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
+                            color: isSelected ? '#1d4ed8' : '#475569',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          {t}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <label style={settingsLabelStyle}>
+                    Prefix / Code
+                    <input
+                      id="receipt-numbering-prefix"
+                      type="text"
+                      value={numberingPrefix}
+                      onChange={e => setNumberingPrefix(e.target.value)}
+                      placeholder="WSBLY-"
+                      style={settingsFieldStyle}
+                    />
+                  </label>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <label style={settingsLabelStyle}>
+                      Next Number
+                      <input
+                        id="receipt-numbering-next"
+                        type="number"
+                        min={1}
+                        value={numberingNext}
+                        onChange={e => setNumberingNext(e.target.value)}
+                        style={settingsFieldStyle}
+                      />
+                    </label>
+                    <label style={settingsLabelStyle}>
+                      Digits
+                      <input
+                        id="receipt-numbering-padding"
+                        type="number"
+                        min={0}
+                        max={12}
+                        value={numberingPadding}
+                        onChange={e => setNumberingPadding(e.target.value)}
+                        title="0 = no zero padding (e.g. 8320). 4 = 0832 style width."
+                        style={settingsFieldStyle}
+                      />
+                    </label>
+                  </div>
+
+                  <div style={{
                     display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
                     gap: '8px',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <Shield size={16} color="#2563eb" />
-                  <span>Tally Export</span>
-                </button>
+                    padding: '6px 8px',
+                    borderRadius: '6px',
+                    backgroundColor: '#ffffff',
+                    border: '1px dashed #cbd5e1',
+                    fontSize: '0.72rem',
+                    color: '#475569'
+                  }}>
+                    <span>Next receipt</span>
+                    <strong id="receipt-numbering-preview" style={{ color: '#0f172a', fontSize: '0.8rem' }}>
+                      {previewReceiptNo(numberingPrefix, numberingNext, numberingPadding)}
+                    </strong>
+                  </div>
+
+                  {(() => {
+                    const item = receiptNumbering.find(i => i.receipt_type === numberingType);
+                    if (!item || item.last_used <= 0) return null;
+                    return (
+                      <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                        Last issued number: {item.last_used}
+                      </div>
+                    );
+                  })()}
+
+                  <button
+                    type="button"
+                    id="receipt-numbering-save-btn"
+                    onClick={handleSaveReceiptNumbering}
+                    disabled={numberingSaving}
+                    style={{
+                      width: '100%',
+                      padding: '8px 0',
+                      borderRadius: '6px',
+                      border: '1px solid #059669',
+                      backgroundColor: numberingSaving ? '#d1fae5' : '#059669',
+                      color: numberingSaving ? '#065f46' : '#ffffff',
+                      fontWeight: 800,
+                      fontSize: '0.8rem',
+                      cursor: numberingSaving ? 'wait' : 'pointer'
+                    }}
+                  >
+                    {numberingSaving ? 'Saving…' : 'Save Numbering'}
+                  </button>
+
+                  {numberingMessage && (
+                    <div style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      lineHeight: 1.4,
+                      color: numberingMessage.startsWith('Saved') ? '#047857' : '#b91c1c'
+                    }}>
+                      {numberingMessage}
+                    </div>
+                  )}
+
+                  <div style={{ fontSize: '0.68rem', color: '#64748b', lineHeight: 1.45 }}>
+                    Change the prefix or next number anytime. Typing a full receipt number while creating a receipt also makes it the new baseline.
+                  </div>
+                </div>
               </div>
 
               {/* Admin Access Controls */}
@@ -7032,37 +7487,87 @@ export default function App() {
                 </div>
               )}
 
-              {/* 4. Reset Entire System */}
+              {/* Admin Data Controls (destructive — ADMIN ONLY) */}
               <div>
                 <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#dc2626', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  System Reset
+                  Admin Data Controls
                 </div>
-                <button
-                  type="button"
-                  id="settings-reset-system-btn"
-                  onClick={() => {
-                    setShowSettingsSidebar(false);
-                    setShowResetSystemModal(true);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
+
+                {isAdminAuthenticated ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button
+                      type="button"
+                      id="settings-reset-system-btn"
+                      onClick={() => {
+                        setResetConfirmText('');
+                        setShowSettingsSidebar(false);
+                        setShowResetSystemModal(true);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '7px',
+                        border: '1px solid #fecaca',
+                        backgroundColor: '#fef2f2',
+                        color: '#b91c1c',
+                        fontWeight: 800,
+                        fontSize: '0.84rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <RotateCcw size={16} color="#dc2626" />
+                      <span>Reset Entire System</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="settings-delete-date-btn"
+                      onClick={() => {
+                        setDeleteDateConfirmText('');
+                        setShowSettingsSidebar(false);
+                        setShowDeleteDateModal(true);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '7px',
+                        border: '1px solid #fed7aa',
+                        backgroundColor: '#fff7ed',
+                        color: '#c2410c',
+                        fontWeight: 800,
+                        fontSize: '0.84rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <Calendar size={16} color="#ea580c" />
+                      <span>Delete Data for a Date</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '10px 12px',
                     borderRadius: '7px',
-                    border: '1px solid #fecaca',
-                    backgroundColor: '#fef2f2',
-                    color: '#b91c1c',
-                    fontWeight: 800,
-                    fontSize: '0.84rem',
-                    cursor: 'pointer',
+                    border: '1px dashed #cbd5e1',
+                    backgroundColor: '#f8fafc',
+                    color: '#64748b',
+                    fontSize: '0.78rem',
+                    lineHeight: 1.5,
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <RotateCcw size={16} color="#dc2626" />
-                  <span>Reset All</span>
-                </button>
+                    alignItems: 'flex-start',
+                    gap: '8px'
+                  }}>
+                    <Lock size={15} color="#94a3b8" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <span>Reset and date-wise delete are restricted to Admin. Log in as Admin to unlock them.</span>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -7108,7 +7613,7 @@ export default function App() {
         gap: '12px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontWeight: 700, color: '#f1f5f9' }}>Bellary Motors Sales Pvt. Ltd.</span>
+          <span style={{ fontWeight: 700, color: '#f1f5f9' }}>Bellary Motor Sales Pvt. Ltd.</span>
           <span style={{ color: '#475569' }}>|</span>
           <span>Automotive Accounting & Day Sheet Portal</span>
         </div>
