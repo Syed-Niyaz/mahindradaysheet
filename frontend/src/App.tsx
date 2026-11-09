@@ -2710,7 +2710,7 @@ export default function App() {
                     position: 'relative'
                   }}
                 >
-                  <Icon size={14} color={isActive ? '#ffffff' : (isArchive ? '#6ee7b7' : '#94a3b8')} />
+                  <Icon size={14} color={isActive ? '#ffffff' : (isArchive ? '#059669' : '#475569')} />
                   <span>{tab.label}</span>
                   {isArchive && excelBackupsList.length > 0 && (
                     <span style={{
@@ -2741,7 +2741,7 @@ export default function App() {
           {/* If Admin is logged in, show prominent Logout button in header nav bar */}
           {isAdminAuthenticated && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.74rem', color: '#6ee7b7', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.74rem', color: '#15803d', fontWeight: 700 }}>
                 ● Admin Active: {adminName}
               </span>
               <button
